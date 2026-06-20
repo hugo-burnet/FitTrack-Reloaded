@@ -1,6 +1,8 @@
 /* ================= CALCULS (fonctions pures) ================= */
 
-/* moyenne hebdo glissante : groupe par semaine ISO approx (blocs de 7 jours depuis la 1re pesée) */
+/* moyenne hebdo : groupe les pesées en blocs de 7 jours comptés depuis la 1re pesée
+   (PAS des semaines calendaires/ISO — l'ancrage est la date de départ de la série).
+   L'index de bloc tient compte des trous : une semaine sans pesée n'a pas d'entrée. */
 export function moyennesHebdo(poids){
   if(poids.length===0) return [];
   const t0 = new Date(poids[0].date+'T12:00:00').getTime();

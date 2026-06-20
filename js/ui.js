@@ -28,6 +28,29 @@ export function toast(message, type='info'){      /* type : info | ok | erreur *
   setTimeout(fermer, type==='erreur' ? 4500 : 3000);
 }
 
+/* toast d'annulation : notification avec un bouton « Annuler » (fenêtre ~6 s).
+   Sert de filet anti-perte sur les suppressions (pesée / mensuration / séance).
+   `onUndo` n'est appelé QUE si l'utilisateur clique le bouton avant la fermeture. */
+export function toastUndo(message, onUndo, label='Annuler'){
+  const el = document.createElement('div');
+  el.className = 'toast toast-undo';
+  const span = document.createElement('span');
+  span.className = 'toast-msg';
+  span.textContent = message;
+  const btn = document.createElement('button');
+  btn.className = 'toast-action';
+  btn.type = 'button';
+  btn.textContent = label;
+  el.append(span, btn);
+  zoneToast().appendChild(el);
+  requestAnimationFrame(() => el.classList.add('on'));
+  const fermer = () => { el.classList.remove('on'); setTimeout(() => el.remove(), 250); };
+  btn.addEventListener('click', (e) => { e.stopPropagation(); fermer(); if(typeof onUndo==='function') onUndo(); });
+  el.addEventListener('click', fermer);   /* clic ailleurs = laisser la suppression */
+  setTimeout(fermer, 6000);
+  return el;
+}
+
 function modal({ message, champ=false, defaut='', okLabel='OK', annulerLabel='Annuler', danger=false }){
   return new Promise(resolve => {
     const ov = document.createElement('div');

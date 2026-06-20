@@ -1,7 +1,7 @@
 import { $, fmtDate, fleche, triDate } from '../utils.js';
 import { moyennesHebdo } from '../stats.js';
 import { optCommun } from '../charts.js';
-import { toast } from '../ui.js';
+import { toast, toastUndo } from '../ui.js';
 
 /* ================= MESURES : poids + mensurations + bandeau + courbes ================= */
 export class MesuresModule {
@@ -50,8 +50,26 @@ export class MesuresModule {
     this.store.sauver(); this.app.renderAll();
     ['m-taille','m-tailler','m-bras','m-cuisse','m-torse'].forEach(i=>$(i).value='');
   }
-  supprimerPoids(date){ this.etat.poids = this.etat.poids.filter(p=>p.date!==date); this.store.sauver(); this.app.renderAll(); }
-  supprimerMens(date){ this.etat.mensurations = this.etat.mensurations.filter(m=>m.date!==date); this.store.sauver(); this.app.renderAll(); }
+  supprimerPoids(date){
+    const supprime = this.etat.poids.find(p=>p.date===date);
+    this.etat.poids = this.etat.poids.filter(p=>p.date!==date);
+    this.store.sauver(); this.app.renderAll();
+    if(supprime) toastUndo('Pesée supprimée.', () => {
+      this.etat.poids = this.etat.poids.filter(p=>p.date!==supprime.date);   /* évite un doublon si re-saisie entre-temps */
+      this.etat.poids.push(supprime); this.etat.poids.sort(triDate);
+      this.store.sauver(); this.app.renderAll();
+    });
+  }
+  supprimerMens(date){
+    const supprime = this.etat.mensurations.find(m=>m.date===date);
+    this.etat.mensurations = this.etat.mensurations.filter(m=>m.date!==date);
+    this.store.sauver(); this.app.renderAll();
+    if(supprime) toastUndo('Relevé supprimé.', () => {
+      this.etat.mensurations = this.etat.mensurations.filter(m=>m.date!==supprime.date);
+      this.etat.mensurations.push(supprime); this.etat.mensurations.sort(triDate);
+      this.store.sauver(); this.app.renderAll();
+    });
+  }
 
   /* ---- affichage ---- */
   render(){

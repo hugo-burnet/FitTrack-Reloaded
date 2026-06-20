@@ -1,5 +1,5 @@
 import { $, qsa, fmtDate, echap, aujourdHui, triDate } from '../utils.js';
-import { toast, confirmer, demander } from '../ui.js';
+import { toast, toastUndo, confirmer, demander } from '../ui.js';
 import { e1rm } from '../stats.js';
 import { optCommun } from '../charts.js';
 import { RestTimer } from '../RestTimer.js';
@@ -555,8 +555,14 @@ export class MuscuModule {
     }).join('');
   }
   supprimerSeance(date, jourId){
+    const supprime = this.etat.seances.find(s=>s.date===date && s.jourId===jourId);
     this.etat.seances = this.etat.seances.filter(s=>!(s.date===date && s.jourId===jourId));
     this.store.sauver(); this.render();
+    if(supprime) toastUndo('Séance supprimée.', () => {
+      this.etat.seances = this.etat.seances.filter(s=>!(s.date===supprime.date && s.jourId===supprime.jourId));
+      this.etat.seances.push(supprime); this.etat.seances.sort(triDate);
+      this.store.sauver(); this.render();
+    });
   }
 
   /* ---- progression par exercice (1RM estimé Epley + volume) ---- */

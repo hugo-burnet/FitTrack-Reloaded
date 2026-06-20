@@ -642,6 +642,13 @@ input:-webkit-autofill:focus{
 .toast.on{opacity:1;transform:translateY(0)}
 .toast-ok{border-left-color:var(--ok)}
 .toast-erreur{border-left-color:var(--alerte)}
+/* toast d'annulation : message + bouton « Annuler » alignés */
+.toast-undo{display:flex;align-items:center;gap:12px}
+.toast-undo .toast-msg{flex:1}
+.toast-action{flex:none;background:transparent;border:1px solid var(--trait);
+  border-radius:var(--r-ctl);color:var(--laiton);font:inherit;font-weight:600;
+  padding:6px 12px;cursor:pointer}
+.toast-action:hover{border-color:var(--laiton)}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
 
 .modal-ov{position:fixed;inset:0;z-index:1001;background:rgba(8,9,11,.66);

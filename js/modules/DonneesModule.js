@@ -1,6 +1,6 @@
-import { $, jourLocal, aujourdHui, cloneProfond, slug } from '../utils.js';
-import { OBJ_DEFAUT, PROG_DEFAUT, COURSES_DEFAUT } from '../data.js';
+import { $, aujourdHui } from '../utils.js';
 import { fusionnerEtat } from '../fusion.js';
+import { migrer } from '../migrations.js';
 import { toast, confirmer } from '../ui.js';
 
 /* ================= DONNÉES : export / import / reset ================= */
@@ -57,6 +57,7 @@ export class DonneesModule {
            jamais altéré par une entrée malformée. Même moteur que la synchro Gist. */
         const etat = this.etat;
         fusionnerEtat(etat, imp);
+        migrer(etat);   /* un fichier d'un ancien schéma est mis à niveau après fusion */
         this.app.muscu.jourSelectionne = null;
         this.store.sauver(); this.app.renderAll();
         toast(`Import réussi : ${etat.poids.length} pesées, ${etat.mensurations.length} relevés, ${etat.seances.length} séances, ${etat.programmes.length} programme(s).`, 'ok');
@@ -68,11 +69,11 @@ export class DonneesModule {
 
   async toutEffacer(){
     if(!(await confirmer('Tout effacer ? As-tu bien exporté d’abord ? C’est irréversible.', {danger:true, okLabel:'Tout effacer'}))) return;
-    this.store.etat = {poids:[], mensurations:[], repas:{jour:jourLocal(), coches:{}}, objectifKcal:OBJ_DEFAUT,
-            journalRepas:[], programmes:cloneProfond(PROG_DEFAUT), programmeActif:'pplul', seances:[],
-            courses:{items:COURSES_DEFAUT.map(c=>({id:slug(c.nom), ...c})), coches:{}, maj:null}, brouillons:{}};
+    /* état vierge issu de la fabrique unique (corrige T1 : plan/courses.jours/autoExport
+       étaient absents de l'ancien littéral → crash de l'onglet Repas après reset) */
+    this.store.reinitialiser();
     this.app.muscu.jourSelectionne = null;
-    this.store.sauver(); this.app.renderAll();
+    this.app.renderAll();
 
     /* La synchro Gist fusionne par UNION : une suppression locale ne se propage pas
        seule → sans ça, le gist ré-hydrate les données au prochain démarrage. On écrase
