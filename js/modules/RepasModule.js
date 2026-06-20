@@ -1,6 +1,9 @@
-import { $, echap, cloneProfond } from '../utils.js';
+import { $, echap, cloneProfond, aujourdHui } from '../utils.js';
 import { ALIMENTS } from '../data.js';
 import { kcalItem, protItem, facteurFlex, flexSature, protCible } from '../nutrition.js';
+import { moyennesHebdo } from '../stats.js';
+import { calculerBesoins, frequenceHebdo, OBJECTIFS } from '../besoins.js';
+import { toast } from '../ui.js';
 
 /* ================= REPAS : cible du jour, écart temps réel, log de la réalité =================
    Modèle « cible + écart » (specs 4.1) : le plan n'est qu'un DÉFAUT suggéré ; la vérité,
@@ -15,6 +18,7 @@ export class RepasModule {
     this.reorgOuvert = false;       /* le mode déplacement est-il actif */
     this.porteeDepl = 'plan';       /* 'plan' (permanent) | 'jour' (aujourd'hui seulement) */
     this.deplItem = null;           /* "idRepas:cle" de l'aliment dont le sélecteur de cible est ouvert */
+    this.besoinsOuvert = false;     /* calculateur de besoins (E5) déplié ? */
     this.bind();
   }
 
@@ -53,6 +57,11 @@ export class RepasModule {
       if(supprX){ this.supprimerExtra(supprX.dataset.id); return; }
       if(e.target.closest('#btn-extra-toggle')){ this.basculerFormExtra(); return; }
       if(e.target.closest('#btn-extra-add')){ this.ajouterDepuisForm(); return; }
+      /* calculateur de besoins (E5) */
+      if(e.target.closest('#btn-besoins-toggle')){ this.basculerBesoins(); return; }
+      const objChip = e.target.closest('#bes-objectif [data-obj]');
+      if(objChip){ this.choisirObjectif(objChip.dataset.obj); return; }
+      if(e.target.closest('#btn-besoins-appliquer')){ this.appliquerBesoins(); return; }
       const carte = e.target.closest('[data-action="prendre-repas"]');
       if(carte){ this.prendreRepas(carte.dataset.id); return; }
     });
@@ -60,9 +69,13 @@ export class RepasModule {
       const carte = e.target.closest('[data-action="prendre-repas"]');
       if(carte && (e.key===' '||e.key==='Enter')){ e.preventDefault(); this.prendreRepas(carte.dataset.id); }
     });
-    root.addEventListener('change', e => { if(e.target.id==='extra-aliment') this.majModeExtra(); });
+    root.addEventListener('change', e => {
+      if(e.target.id==='extra-aliment') this.majModeExtra();
+      if(e.target.id==='bes-sexe' || e.target.id==='bes-age' || e.target.id==='bes-stature') this.majProfilDepuisChamps();
+    });
     root.addEventListener('input', e => {
       if(e.target.id==='extra-qte' || e.target.id==='extra-kcal' || e.target.id==='extra-prot') this.majApercuExtra();
+      if(e.target.id==='bes-age' || e.target.id==='bes-stature') this.renderBesoinsResultat();   /* aperçu live */
     });
     $('obj-kcal').addEventListener('change', () => this.majObjectif());
   }
@@ -207,11 +220,110 @@ export class RepasModule {
     this.store.sauver(); this.render();
   }
 
+  /* ================= CALCULATEUR DE BESOINS (E5) =================
+     Profil (sexe/âge/stature) + objectif + poids et activité déduits → cible kcal/macros.
+     Le poids vient de la dernière moyenne hebdo (repli : dernière pesée) ; l'activité de
+     la fréquence réelle des séances. La cible calculée alimente `objectifKcal`/`objectif`. */
+
+  /* poids de référence (kg) : dernière moyenne hebdo, sinon dernière pesée, sinon null */
+  poidsReference(){
+    const moy = moyennesHebdo(this.etat.poids);
+    if(moy.length) return Math.round(moy[moy.length-1].kg * 10) / 10;
+    const p = this.etat.poids;
+    return p.length ? p[p.length-1].kg : null;
+  }
+  seancesParSemaine(){ return frequenceHebdo(this.etat.seances, aujourdHui(), 4); }
+  objectifCourant(){
+    const t = this.etat.objectif && this.etat.objectif.type;
+    return OBJECTIFS.includes(t) ? t : 'recompo';
+  }
+  /* assemble les entrées et délègue au moteur pur */
+  calculBesoins(){
+    const prof = this.etat.profil || {};
+    return calculerBesoins({
+      sexe: prof.sexe, age: prof.age, stature: prof.stature,
+      poids: this.poidsReference(), objectif: this.objectifCourant(),
+      seancesParSemaine: this.seancesParSemaine(),
+    });
+  }
+
+  basculerBesoins(){
+    this.besoinsOuvert = !this.besoinsOuvert;
+    $('besoins-form').classList.toggle('cache', !this.besoinsOuvert);
+    $('btn-besoins-toggle').setAttribute('aria-expanded', String(this.besoinsOuvert));
+    $('btn-besoins-toggle').textContent = this.besoinsOuvert ? '✕ Fermer' : 'Calculer mes besoins';
+    if(this.besoinsOuvert) this.renderBesoins();
+  }
+
+  /* champs profil → état (persisté), puis rafraîchit l'aperçu */
+  majProfilDepuisChamps(){
+    const prof = this.etat.profil || (this.etat.profil = { sexe:null, age:null, stature:null });
+    const sexe = $('bes-sexe').value;
+    prof.sexe = (sexe==='homme'||sexe==='femme') ? sexe : null;
+    const age = parseInt($('bes-age').value, 10);
+    prof.age = Number.isFinite(age) ? age : null;
+    const st = parseInt($('bes-stature').value, 10);
+    prof.stature = Number.isFinite(st) ? st : null;
+    this.store.sauver();
+    this.renderBesoinsResultat();
+  }
+  choisirObjectif(type){
+    if(!OBJECTIFS.includes(type)) return;
+    if(!this.etat.objectif || typeof this.etat.objectif!=='object') this.etat.objectif = {};
+    this.etat.objectif.type = type;
+    this.store.sauver();
+    this.renderBesoins();   /* met à jour les chips actifs + l'aperçu */
+  }
+  appliquerBesoins(){
+    const r = this.calculBesoins();
+    if(!r.valide){
+      const lib = { sexe:'le sexe', age:'l’âge', stature:'la taille', poids:'une pesée' };
+      toast('Renseigne ' + r.manque.map(m=>lib[m]||m).join(', ') + ' pour calculer.', 'erreur');
+      return;
+    }
+    this.etat.objectif = { type:r.objectif, cibleKcal:r.kcal, cibleMacros:r.macros };
+    this.etat.objectifKcal = Math.max(1600, Math.min(4000, r.kcal));
+    this.store.sauver();
+    toast(`Objectif appliqué : ${this.etat.objectifKcal} kcal/j.`, 'ok');
+    this.render();   /* met à jour le stepper kcal + la cible du jour */
+  }
+
+  /* prérenseigne les champs depuis le profil (sauf si en cours d'édition) + chips + aperçu */
+  renderBesoins(){
+    if(!this.besoinsOuvert) return;
+    const prof = this.etat.profil || {};
+    const set = (id, v) => { const el=$(id); if(el && document.activeElement!==el) el.value = (v==null?'':v); };
+    set('bes-sexe', prof.sexe);
+    set('bes-age', prof.age);
+    set('bes-stature', prof.stature);
+    const actif = this.objectifCourant();
+    document.querySelectorAll('#bes-objectif [data-obj]').forEach(b =>
+      b.classList.toggle('actif', b.dataset.obj === actif));
+    this.renderBesoinsResultat();
+  }
+  renderBesoinsResultat(){
+    const el = $('bes-resultat'); if(!el) return;
+    const r = this.calculBesoins();
+    if(!r.valide){
+      const lib = { sexe:'sexe', age:'âge', stature:'taille (cm)', poids:'une pesée' };
+      el.innerHTML = `<p class="note" style="margin:0">Renseigne ${r.manque.map(m=>lib[m]||m).join(', ')} pour obtenir une cible.</p>`;
+      return;
+    }
+    const poids = this.poidsReference();
+    const sem = Math.round(this.seancesParSemaine() * 10) / 10;
+    const objLib = { seche:'Sèche', recompo:'Recompo', masse:'Prise de masse' }[r.objectif];
+    el.innerHTML = `
+      <div class="bes-res-kcal mono">≈ <b>${r.kcal}</b> kcal/jour <span class="bes-res-obj">· ${objLib}</span></div>
+      <div class="bes-res-macros mono">Prot <b>${r.macros.proteines} g</b> · Lip <b>${r.macros.lipides} g</b> · Gluc <b>${r.macros.glucides} g</b> · Fibres ${r.macros.fibres} g</div>
+      <div class="note" style="margin:6px 0 0">BMR ${r.bmr} × activité ${r.facteur} (≈ ${sem} séance${sem>1?'s':''}/sem) → TDEE ${r.tdee} kcal · poids pris : ${poids} kg.</div>`;
+  }
+
   /* ---- affichage ---- */
   render(){
     this.store.resetSiNouveauJour();
     const obj = $('obj-kcal');
     if(document.activeElement!==obj) obj.value = this.etat.objectifKcal;
+    this.renderBesoins();   /* calculateur (E5) : rafraîchit l'aperçu si déplié */
 
     /* avertissement de saturation du facteur flex (le plan ne peut plus s'ajuster) */
     const sat = flexSature(this.etat.objectifKcal, this.etat.plan);

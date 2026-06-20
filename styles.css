@@ -678,3 +678,18 @@ input:-webkit-autofill:focus{
 .sem-force.ok{color:var(--craie);background:var(--plaque-2);
   border-left:3px solid var(--ok);border-radius:var(--r-ctl);padding:10px 12px}
 .sem-force b{color:var(--craie)}
+
+/* ---------- calculateur de besoins (E5) ---------- */
+.besoins-tete{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.besoins-tete h2{margin-bottom:0}
+.besoins-tete .besoins-toggle{width:auto;margin-top:0}
+#besoins-form{margin-top:14px}
+#besoins-form select{width:100%;background:var(--plaque-2);border:1px solid var(--trait);
+  border-radius:var(--r-ctl);color:var(--craie);padding:12px 14px;font-size:15px;min-height:44px}
+#bes-objectif{margin-top:4px}
+.besoins-resultat{background:var(--plaque-2);border-radius:var(--r-ctl);padding:12px 14px;margin:12px 0}
+.bes-res-kcal{font-size:18px;color:var(--craie)}
+.bes-res-kcal b{font-weight:700}
+.bes-res-obj{color:var(--craie-2);font-size:14px;font-weight:500}
+.bes-res-macros{font-size:14px;color:var(--craie-2);margin-top:6px}
+.bes-res-macros b{color:var(--craie)}

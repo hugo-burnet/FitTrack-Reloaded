@@ -28,10 +28,12 @@ Branche `v2-stabilisation` → mergée dans `main`. Tests : **114 → 138, tous 
 
 Découpée en sous-lots livrables indépendamment, chacun testé et committé. Ordre choisi : poser la **fondation calcul (E5)** d'abord (le « liant » qui relie profil → muscu → nutrition → verdict), puis enrichir la nutrition, puis modulariser au fil des fichiers touchés.
 
-### V3.1 — Profil + Objectif + Calculateur de besoins (E5) ← EN COURS
-- Modèle v3 (migration schéma 1→2) : `profil {stature, age, sexe}`, `objectif {type, cibleKcal, cibleMacros}`.
-- Moteur pur `js/besoins.js` : BMR (Mifflin-St Jeor) → TDEE (activité dérivée des séances récentes, repli sur le programme) → ajustement objectif (masse/sèche/recompo) → split macros (prot g/kg, lipides %, glucides = reste). Testé.
-- UI **Profil** : saisie stature/âge/sexe + choix d'objectif → affiche TDEE + cible kcal/macros recommandée → « Appliquer ». `objectifKcal` devient une sortie du calculateur (surcharge manuelle conservée).
+### V3.1 — Profil + Objectif + Calculateur de besoins (E5) ✅ FAIT
+- [x] Modèle v3 (migration **schéma 1→2**) : `profil {sexe, age, stature}`, `objectif {type, cibleKcal, cibleMacros}`. Garde-fous dans `Store._appliquerDefauts`.
+- [x] Moteur pur `js/besoins.js` : BMR (Mifflin-St Jeor) → TDEE (facteur déduit de `frequenceHebdo` des séances) → ajustement objectif (sèche −20 % / recompo 0 / masse +10 %) → split macros (prot g/kg selon objectif, lipides 25 %, glucides = reste, fibres indicatives). **8 tests** (`tests/besoins.test.js`).
+- [x] UI **Calculateur** (carte dépliable dans l'onglet Repas) : sexe/âge/taille + objectif (chips) ; poids (dernière moy. hebdo) et activité (séances/sem) déduits ; aperçu live ; « Appliquer » → écrit `objectif` + `objectifKcal` (toujours surchargeable à la main).
+- [x] `sw.js` v16. Validé sur démo : 72,5 kg / 178 / 30 ans / 5 séances → TDEE 2920 ; sèche 2336 / recompo 2920 / masse 3212.
+- ⚠ Collision « taille » levée : `profil.stature` (cm) ≠ tour de taille des mensurations.
 
 ### V3.2 — Macros complètes (E3)
 - Modèle aliment étendu : `glucides/lipides/fibres` (par 100 g et par unité). Migration des aliments existants.
