@@ -1,6 +1,6 @@
 import { $, echap, ilYaJours } from '../utils.js';
 import { moyennesHebdo, rythmeMensuel, tendanceTaille, tendanceBras, brasStagne } from '../stats.js';
-import { decisionVerdict } from '../verdict.js';
+import { decisionVerdict, SCENARIOS, OBJECTIFS_VERDICT } from '../verdict.js';
 import { protCible } from '../nutrition.js';
 import { adherenceHebdo, bilanForce } from '../bilan.js';
 
@@ -9,6 +9,12 @@ export class VerdictModule {
   constructor(store, app){ this.store = store; this.app = app; }
 
   get etat(){ return this.store.etat; }
+
+  /* objectif courant (sèche/recompo/masse), validé ; pilote l'arbre de décision (V3.5) */
+  objectif(){
+    const t = this.etat.objectif && this.etat.objectif.type;
+    return OBJECTIFS_VERDICT.includes(t) ? t : 'recompo';
+  }
 
   render(){
     const box = $('verdict-box');
@@ -19,9 +25,10 @@ export class VerdictModule {
     const dTaille = tendanceTaille(this.etat.mensurations);
     const dBras = tendanceBras(this.etat.mensurations);
     const nbSem = moyennesHebdo(this.etat.poids).length;
+    const objectif = this.objectif();
 
     const { cls, t, e } = decisionVerdict({
-      rythme, dTaille, dBras, nbSem, brasStagne: brasStagne(this.etat.mensurations),
+      rythme, dTaille, dBras, nbSem, brasStagne: brasStagne(this.etat.mensurations), objectif,
     });
     box.className = 'verdict '+cls;
     tampon.textContent = t;
@@ -32,7 +39,20 @@ export class VerdictModule {
     if(dBras!==null) html += `<span>Bras <b>${(dBras>=0?'+':'')+dBras.toFixed(1)} cm</b></span>`;
     data.innerHTML = html;
 
+    this.renderScenarios(objectif);
     this.renderSemaine(rythme);
+  }
+
+  /* cartes « scénario » adaptées à l'objectif courant + badge objectif */
+  renderScenarios(objectif){
+    const lib = { seche:'Sèche', recompo:'Recompo', masse:'Prise de masse' }[objectif];
+    const badge = $('verdict-obj'); if(badge) badge.textContent = lib;
+    const ul = $('scenarios'); if(!ul) return;
+    ul.innerHTML = (SCENARIOS[objectif] || SCENARIOS.recompo).map(s =>
+      `<li class="sc ${s.cls}">
+        <div class="sc-cond"><span class="cond-p">${echap(s.p)}</span><span class="cond-t">${echap(s.t)}</span></div>
+        <div class="sc-verdict">${echap(s.v)}</div>
+      </li>`).join('');
   }
 
   /* ---- reads hebdo entre deux verdicts mensuels (specs 4.4) ---- */

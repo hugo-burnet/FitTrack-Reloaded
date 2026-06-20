@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { migrer, SCHEMA_ACTUEL } from '../js/migrations.js';
+import { migrer, MIGRATIONS, SCHEMA_ACTUEL } from '../js/migrations.js';
 
 /* Cadre de migrations versionnées : socle des évolutions de schéma v3+.
    On teste le moteur avec des migrations injectées (la liste réelle est vide en V2). */
@@ -38,4 +38,58 @@ test('migrer : s\'arrête proprement si aucune migration ne couvre la version', 
 test('migrer : robuste aux entrées non-objet', () => {
   assert.doesNotThrow(() => migrer(null));
   assert.doesNotThrow(() => migrer(undefined));
+});
+
+/* ---- migrations réelles (liste MIGRATIONS) ---- */
+
+test('migration v1 (legacy) → schéma courant : profil + objectif + aliments.perso', () => {
+  const e = { poids: [] };   /* état d'avant V3, sans schema */
+  migrer(e);
+  assert.equal(e.schema, SCHEMA_ACTUEL);
+  assert.deepEqual(e.profil, { sexe:null, age:null, stature:null });
+  assert.equal(e.objectif.type, 'recompo');
+  assert.ok(e.aliments && typeof e.aliments.perso === 'object');
+});
+
+test('migration v2 → v3 : ajoute aliments.perso sans toucher au reste', () => {
+  const e = { schema:2, profil:{ sexe:'homme', age:30, stature:178 }, objectif:{ type:'seche' } };
+  migrer(e);
+  assert.equal(e.schema, SCHEMA_ACTUEL);
+  assert.deepEqual(e.aliments.perso, {});
+  assert.equal(e.objectif.type, 'seche');        /* objectif existant préservé */
+  assert.equal(e.profil.stature, 178);           /* profil existant préservé */
+});
+
+test('migration v2 → v3 : ne dé-référence pas un aliments.perso déjà présent', () => {
+  const perso = { 'mon-truc': { nom:'Mon truc', cat:'Compléments', kcal100:100 } };
+  const e = { schema:2, aliments:{ perso } };
+  migrer(e);
+  assert.equal(e.aliments.perso, perso);   /* même référence : pas écrasé */
+});
+
+test('migration v3 → v4 : l\'ancien plan devient le menu actif d\'une collection', () => {
+  const plan = [{id:'dej', items:[['riz',120]]}];
+  const e = { schema:3, plan };
+  migrer(e);
+  assert.equal(e.schema, SCHEMA_ACTUEL);
+  assert.ok(!('plan' in e), 'l\'ancien champ plan est retiré');
+  assert.equal(e.plansAlim.length, 1);
+  assert.equal(e.plansAlim[0].id, 'principal');
+  assert.deepEqual(e.plansAlim[0].repas, plan);   /* repas préservés tels quels */
+  assert.equal(e.planAlimActif, 'principal');
+});
+
+test('migration v4 → v5 : ajoute la collection plats[] vide', () => {
+  const e = { schema:4, plansAlim:[{id:'principal',nom:'M',repas:[]}], planAlimActif:'principal' };
+  migrer(e);
+  assert.equal(e.schema, SCHEMA_ACTUEL);
+  assert.deepEqual(e.plats, []);
+});
+
+test('migration v1 (legacy) → schéma courant : profil + perso + plansAlim + plats en une chaîne', () => {
+  const e = { poids:[], plan:[{id:'dej', items:[['riz',100]]}] };
+  migrer(e);
+  assert.equal(e.schema, SCHEMA_ACTUEL);
+  assert.ok(e.profil && e.aliments && Array.isArray(e.plansAlim) && Array.isArray(e.plats));
+  assert.equal(e.planAlimActif, 'principal');
 });

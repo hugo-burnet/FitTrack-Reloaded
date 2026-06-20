@@ -148,6 +148,10 @@ td.n{font-variant-numeric:tabular-nums}
 .graph-box{position:relative;height:240px;margin-top:8px}
 
 /* ---------- cartes-scénarios (arbre de décision) ---------- */
+/* badge de l'objectif courant à côté du titre « L'arbre de décision » (V3.5) */
+.verdict-obj-badge{font-size:12px;font-weight:600;letter-spacing:.04em;
+  color:var(--accent-soft);background:var(--plaque-2);border:1px solid var(--trait);
+  border-radius:999px;padding:4px 12px;white-space:nowrap}
 .scenarios{list-style:none;display:flex;flex-direction:column;gap:10px}
 .sc{
   background:var(--plaque-2);border-left:3px solid var(--trait);
@@ -605,6 +609,14 @@ input:-webkit-autofill:focus{
 .cible-chiffre{font-size:13px;color:var(--craie-2);font-variant-numeric:tabular-nums}
 /* protéines : jauge verte (statut de progression) */
 .prog-rempli.prot{background:var(--ok)}
+/* répartition macros complètes (E3) : glucides / lipides / fibres */
+.cible-macros{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:14px;padding-top:12px;
+  border-top:1px solid var(--trait)}
+.macro-mini{display:flex;flex-direction:column;gap:2px;flex:1 1 0;min-width:84px}
+.macro-mini .macro-lib{font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--craie-3)}
+.macro-mini .macro-val{font-size:14px;font-weight:600;color:var(--craie-2);font-variant-numeric:tabular-nums}
+.macro-mini.depasse .macro-val{color:var(--alerte)}
+.macro-mini.atteint .macro-val{color:var(--ok)}
 .cible-pied{margin-top:12px;padding-top:10px;border-top:1px solid var(--trait);
   font-size:13px;color:var(--craie-2);text-align:center;font-variant-numeric:tabular-nums}
 
@@ -624,6 +636,30 @@ input:-webkit-autofill:focus{
 .extra-macros{font-size:13px;color:var(--craie-2);font-variant-numeric:tabular-nums}
 #extras-liste{margin-bottom:12px}
 #extra-form{margin-top:12px}
+
+/* ---------- Éditeur d'aliments perso (E2) ---------- */
+#perso-form{margin-top:12px}
+.perso-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+.perso-actions .btn{flex:1 1 auto}
+.perso-items{margin-top:14px;border-top:1px solid var(--trait)}
+.perso-item{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 0;border-bottom:1px solid var(--trait)}
+.perso-info{display:flex;flex-direction:column;gap:2px;min-width:0}
+.perso-nom{color:var(--craie);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.perso-macros{font-size:12px;color:var(--craie-2);font-variant-numeric:tabular-nums}
+.perso-cat{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--craie-3)}
+.perso-btns{display:flex;align-items:center;gap:8px;flex-shrink:0}
+
+/* ---------- Plats composés (E4) ---------- */
+#plats-actifs{margin-bottom:4px}
+.plat-item{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 0;border-bottom:1px solid var(--trait)}
+.plat-item:first-child{padding-top:0}
+.plat-comps{margin:8px 0;border-top:1px solid var(--trait)}
+.plat-comp{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--trait)}
+.plat-comp-nom{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plat-comp-qte{color:var(--craie-2);font-size:13px;flex-shrink:0}
+.plat-total{margin:6px 0 2px;font-size:13px;color:var(--accent-soft);font-weight:600;font-variant-numeric:tabular-nums}
 
 /* ---------- Courses : quantités dérivées du plan (specs 4.3) ---------- */
 .courses-reglage{display:flex;align-items:center;gap:8px;margin-bottom:12px;

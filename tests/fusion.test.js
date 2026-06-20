@@ -45,11 +45,52 @@ test('fusion : repas du jour coché sur un appareil reste coché (OU)', () => {
   assert.deepEqual(etat.repas.coches, {dej:true, diner:true});
 });
 
-test('fusion : objectifKcal et plan entrants gagnent s\'ils sont valides', () => {
+test('fusion : objectifKcal entrant gagne s\'il est valide', () => {
   const etat = etatParDefaut();
-  fusionnerEtat(etat, { objectifKcal:2000, plan:[{id:'dej', items:[['riz',120]]}] });
+  fusionnerEtat(etat, { objectifKcal:2000 });
   assert.equal(etat.objectifKcal, 2000);
-  assert.deepEqual(etat.plan, [{id:'dej', items:[['riz',120]]}]);
+});
+
+test('fusion : menus (plansAlim) réconciliés par id, l\'entrant gagne', () => {
+  const etat = etatParDefaut();   /* contient { id:'principal', … } */
+  fusionnerEtat(etat, { plansAlim:[
+    { id:'principal', nom:'Principal v2', repas:[{id:'dej', items:[['riz',120]]}] },  /* remplace */
+    { id:'seche', nom:'Sèche', repas:[{id:'dej', items:[['poulet',200]]}] },          /* ajoute */
+  ], planAlimActif:'seche' });
+  assert.equal(etat.plansAlim.length, 2);
+  assert.equal(etat.plansAlim.find(p=>p.id==='principal').nom, 'Principal v2');
+  assert.equal(etat.planAlimActif, 'seche');
+});
+
+test('fusion : export legacy (plan unique) met à jour les repas du menu actif', () => {
+  const etat = etatParDefaut();
+  const avant = etat.plansAlim.length;
+  fusionnerEtat(etat, { plan:[{id:'dej', items:[['riz',120]]}] });
+  assert.equal(etat.plansAlim.length, avant);   /* pas de nouveau menu */
+  const actif = etat.plansAlim.find(p=>p.id===etat.planAlimActif);
+  assert.deepEqual(actif.repas, [{id:'dej', items:[['riz',120]]}]);
+});
+
+test('fusion : plats composés réconciliés par id, l\'entrant gagne', () => {
+  const etat = etatParDefaut();
+  etat.plats = [{ id:'bowl', nom:'Bowl', composants:[['poulet',150]] }];
+  fusionnerEtat(etat, { plats:[
+    { id:'bowl', nom:'Bowl v2', composants:[['poulet',200]] },   /* remplace */
+    { id:'shake', nom:'Shake', composants:[['whey',1]] },        /* ajoute */
+  ]});
+  assert.equal(etat.plats.length, 2);
+  assert.equal(etat.plats.find(p=>p.id==='bowl').nom, 'Bowl v2');
+});
+
+test('fusion : aliments perso réconciliés par clé, l\'entrant gagne', () => {
+  const etat = etatParDefaut();
+  etat.aliments.perso = { a:{ nom:'A', cat:'Fruits', kcal100:50 } };
+  fusionnerEtat(etat, { aliments:{ perso:{
+    a:{ nom:'A modifié', cat:'Fruits', kcal100:60 },   /* remplace */
+    b:{ nom:'B', cat:'Sucré', kcal100:400 },           /* ajoute */
+  } } });
+  assert.equal(etat.aliments.perso.a.nom, 'A modifié');
+  assert.equal(etat.aliments.perso.b.kcal100, 400);
 });
 
 test('fusion : journal des repas par date+id', () => {

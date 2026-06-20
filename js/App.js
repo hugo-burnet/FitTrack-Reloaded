@@ -101,5 +101,7 @@ export class App {
     if(this.muscu) this.muscu.surOnglet(nom);   /* wake lock : actif seulement en séance (specs 4.2) */
     /* courses : quantités dérivées du plan → on rafraîchit à l'entrée (suit l'objectif kcal) */
     if(nom==='courses' && this.courses) this.courses.render();
+    /* verdict : l'arbre et les cartes dépendent de l'objectif (réglé dans Repas) → re-rendu à l'entrée */
+    if(nom==='verdict' && this.verdict) this.verdict.render();
   }
 }

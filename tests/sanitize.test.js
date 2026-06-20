@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   assainirEtat, assainirDates, serieValide, assainirSeance,
-  assainirRepasPlan, assainirProgrammes, assainirJournalRepas, assainirCoursesItems,
+  assainirRepasPlan, assainirPlansAlim, assainirProgrammes, assainirJournalRepas, assainirCoursesItems,
+  assainirAlimentsPerso, assainirPlats,
 } from '../js/sanitize.js';
 
 /* Garde-fou sur le code défensif le plus critique (jusqu'ici non testé) :
@@ -47,6 +48,20 @@ test('assainirRepasPlan : aliments connus + quantités numériques ; null si rie
   assert.equal(assainirRepasPlan('nope'), null);
 });
 
+test('assainirPlansAlim : exige id + nom ; repas nettoyés (aliments connus) ; null si vide', () => {
+  const m = assainirPlansAlim([
+    { id:'a', nom:'Sèche', repas:[{id:'dej', items:[['riz',100],['inconnu',50]]}] },
+    { id:'b', repas:[{id:'x', items:[['inconnu',1]]}] },   /* nom manquant → défaut ; repas vidés */
+    { nom:'sans id' },                                      /* pas d'id → écarté */
+  ]);
+  assert.equal(m.length, 2);
+  assert.deepEqual(m[0].repas, [{id:'dej', items:[['riz',100]]}]);
+  assert.equal(m[1].nom, 'Menu');         /* nom par défaut */
+  assert.deepEqual(m[1].repas, [{id:'x', items:[]}]);
+  assert.equal(assainirPlansAlim([{nom:'x'}]), null);   /* aucun menu valide */
+  assert.equal(assainirPlansAlim('nope'), null);
+});
+
 test('assainirProgrammes : exige id + jours[] dont chaque jour a un tableau exercices', () => {
   const p = assainirProgrammes([
     {id:'a', jours:[{id:'j', exercices:[]}]},
@@ -67,12 +82,44 @@ test('assainirCoursesItems : ne garde que les objets avec id', () => {
   assert.deepEqual(assainirCoursesItems([{id:'a'}, 2, null, {nom:'sans id'}]), [{id:'a'}]);
 });
 
+test('assainirPlats : exige id + nom ; composants à clé chaîne et quantité > 0', () => {
+  const p = assainirPlats([
+    { id:'bowl', nom:'Bowl', composants:[['poulet',200],['riz',-1],[42,10],['banane',1]] },
+    { id:'nu', composants:'oops' },        /* nom manquant → défaut ; composants invalides → [] */
+    { nom:'sans id' },                      /* pas d'id → écarté */
+  ]);
+  assert.equal(p.length, 2);
+  assert.deepEqual(p[0].composants, [['poulet',200],['banane',1]]);   /* qté ≤ 0 et clé non-chaîne écartées */
+  assert.equal(p[1].nom, 'Plat');
+  assert.deepEqual(p[1].composants, []);
+  assert.deepEqual(assainirPlats('nope'), []);
+});
+
+test('assainirAlimentsPerso : exige un nom, normalise macros et défaut de catégorie', () => {
+  const out = assainirAlimentsPerso({
+    bon:    { nom:' Mon shake ', cat:'Compléments', kcal100:120, prot100:25, gluc100:3, lip100:1, fib100:0 },
+    partiel:{ nom:'Sans macros' },                       /* macros absentes → 0, cat par défaut */
+    negatif:{ nom:'Négatif', prot100:-5, gluc100:'x' },  /* valeurs invalides → 0 */
+    sansnom:{ cat:'Fruits', kcal100:50 },                /* pas de nom → écarté */
+    vide:   { nom:'   ' },                               /* nom blanc → écarté */
+    pasobjet: 42,
+  });
+  assert.deepEqual(Object.keys(out).sort(), ['bon','negatif','partiel']);
+  assert.equal(out.bon.nom, 'Mon shake');               /* trim */
+  assert.deepEqual(out.partiel, { nom:'Sans macros', cat:'Compléments', kcal100:0, prot100:0, gluc100:0, lip100:0, fib100:0 });
+  assert.equal(out.negatif.prot100, 0);
+  assert.equal(out.negatif.gluc100, 0);
+  assert.deepEqual(assainirAlimentsPerso('nope'), {});
+  assert.deepEqual(assainirAlimentsPerso(null), {});
+});
+
 test('assainirEtat : ne lève jamais et purge en place', () => {
   const etat = { poids:[{date:'2026-01-01',kg:80},'bad'], seances:'oops',
-                 courses:{items:[{id:1},2]} };
+                 courses:{items:[{id:1},2]}, aliments:{perso:{x:{nom:'X',kcal100:10},y:{}}} };
   assert.doesNotThrow(() => assainirEtat(etat));
   assert.equal(etat.poids.length, 1);
   assert.deepEqual(etat.seances, []);
   assert.deepEqual(etat.courses.items, [{id:1}]);
+  assert.deepEqual(Object.keys(etat.aliments.perso), ['x']);   /* y (sans nom) écarté */
   assert.equal(assainirEtat(null), null);
 });

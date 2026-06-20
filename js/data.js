@@ -1,22 +1,16 @@
 /* ================= CONSTANTES & DONNÉES PAR DÉFAUT ================= */
 
+import { ALIMENTS_BASE } from './data/aliments-base.js';
+
 export const CLE = 'carnet-recompo-v1';
 export const OBJ_DEFAUT = 2545; /* référence du plan de la bible nutrition */
 
-/* Valeurs nutritionnelles approximatives (par 100 g, sauf 'unite'). Les bases de données varient de ±10 %. */
-export const ALIMENTS = {
-  avoine:  {nom:"Flocons d'avoine",            kcal100:380, prot100:13,  flex:true},
-  riz:     {nom:"Riz (cru)",                   kcal100:350, prot100:7,   flex:true},
-  poulet:  {nom:"Haut de cuisse poulet (cru)", kcal100:130, prot100:19},
-  skyr:    {nom:"Skyr nature",                 kcal100:63,  prot100:11},
-  pb:      {nom:"Beurre de cacahuète",         kcal100:600, prot100:25},
-  pois:    {nom:"Petits pois-carottes",        kcal100:60,  prot100:3.5},
-  amandes: {nom:"Amandes",                     kcal100:600, prot100:21},
-  noix:    {nom:"Noix",                         kcal100:650, prot100:15},
-  whey:    {nom:"Whey",      unite:"shaker",   kcalU:115,   protU:23},
-  banane:  {nom:"Banane",    unite:"",          kcalU:105,   protU:1.3},
-  choco:   {nom:"Chocolat noir 85%", unite:"carré", kcalU:30, protU:0.5},
-};
+/* Catalogue d'aliments par défaut (base curée embarquée, E2). Les clés du PLAN et de
+   COURSES_DEFAUT y figurent (clés figées). Les fonctions de calcul (nutrition.js)
+   consultent ALIMENTS ; pour inclure les aliments perso de l'utilisateur, on leur passe
+   plutôt le catalogue fusionné (catalogue.js). Macros complètes par 100 g (sauf aliments
+   « unité » : whey/banane/choco). */
+export const ALIMENTS = ALIMENTS_BASE;
 
 export const PLAN = [
   {id:'pdej',  nom:'Petit-déjeuner',     items:[['avoine',100],['whey',1],['banane',1],['pb',15]]},

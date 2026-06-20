@@ -1,6 +1,7 @@
 import { $, echap, slug, jourLocal } from '../utils.js';
 import { ALIMENTS, COURSES_DEFAUT } from '../data.js';
 import { consoQuotidienne } from '../nutrition.js';
+import { repasActifs } from '../plans.js';
 import { toast } from '../ui.js';
 
 /* ================= LISTE DE COURSES ================= */
@@ -60,7 +61,7 @@ export class CoursesModule {
     const ji = $('courses-jours');
     if(ji && document.activeElement!==ji) ji.value = jours;
     /* quantités dérivées du plan, recalculées à chaque rendu (suit l'objectif kcal) */
-    const conso = consoQuotidienne(this.etat.objectifKcal, this.etat.plan);
+    const conso = consoQuotidienne(this.etat.objectifKcal, repasActifs(this.etat));
 
     const liste = $('courses-liste');
     const items = this.etat.courses.items;

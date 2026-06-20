@@ -35,22 +35,29 @@ Découpée en sous-lots livrables indépendamment, chacun testé et committé. O
 - [x] `sw.js` v16. Validé sur démo : 72,5 kg / 178 / 30 ans / 5 séances → TDEE 2920 ; sèche 2336 / recompo 2920 / masse 3212.
 - ⚠ Collision « taille » levée : `profil.stature` (cm) ≠ tour de taille des mensurations.
 
-### V3.2 — Macros complètes (E3)
-- Modèle aliment étendu : `glucides/lipides/fibres` (par 100 g et par unité). Migration des aliments existants.
-- `nutrition.js` calcule les 4 macros ; `journalRepas` les stocke ; affichage de la répartition P/G/L.
-- Flex généralisé & optionnel (aliments « ajustables » librement).
+### V3.2 — Macros complètes (E3) ✅ FAIT
+- [x] Modèle aliment étendu (`data.js : ALIMENTS`) : `gluc/lip/fib` par 100 g (`gluc100/lip100/fib100`) et par unité (`glucU/lipU/fibU`) pour les 11 aliments. Valeurs cohérentes (test : kcal ≈ 4·prot + 4·gluc + 9·lip ±15 %).
+- [x] `nutrition.js` : fonctions pures `glucItem/lipItem/fibItem` (legacy → 0, jamais NaN) + `macrosCible(objectifKcal, plan)` → `{prot, gluc, lip, fib}` (flex ajusté, même arrondi 5 g que `qteAjustee`).
+- [x] `RepasModule` : `repasGluc/Lip/Fib`, `cibles()` renvoie les 4 macros ; `journaliserRepas` + `ajouterExtra(Aliment)` stockent `gluc/lip/fib` ; `consomme()` agrège les 4 (anciennes entrées V3.1− comptées 0, sans casser). Hors-plan libre (kcal/prot saisis à la main) : G/L/fib inconnus → 0.
+- [x] UI : carte cible affiche la répartition **Glucides / Lipides / Fibres** (consommé / cible, coloré sur l'écart : rouge si dépassé, vert si atteint). `#cible-macros` + CSS `.cible-macros`/`.macro-mini`.
+- [x] **4 nouveaux tests** purs (`tests/nutrition.test.js`, total 150 verts). `sw.js` v17 (data.js/nutrition.js déjà précachés).
+- ⏸ Flex généralisé optionnel (marquer librement des aliments « ajustables ») : reporté — non bloquant, à traiter avec l'éditeur d'aliments (V3.3).
 
-### V3.3 — Base d'aliments enrichie + perso (E2)
-- Base curée ~250-400 aliments catégorisés (`data/aliments-base`).
-- Éditeur d'aliments perso (`aliments.perso`) ; recherche/filtre par catégorie.
+### V3.3 — Base d'aliments enrichie + perso (E2) ✅ FAIT
+- [x] **V3.3a** — Base curée embarquée `js/data/aliments-base.js` (**167 aliments** catégorisés, 13 catégories ; clés du PLAN/COURSES figées, valeurs d'origine conservées). kcal dérivées par Atwater (4·prot+4·gluc+9·lip) → cohérence interne garantie. `js/catalogue.js` (pur) : `catalogue(perso)` fusionne base+perso (perso écrase), `tousAliments`/`categoriesPresentes`/`rechercher` (accent-insensible, filtre catégorie). `data.js : ALIMENTS = ALIMENTS_BASE`. Item-fns de `nutrition.js` reçoivent un `aliments` injectable (défaut base). **+8 tests** (`tests/catalogue.test.js`). `sw.js` v18 (+ 2 fichiers précachés).
+- [x] **V3.3b** — État `aliments.perso` (**migration schéma 2→3**, defaults + `Store._appliquerDefauts` + `assainirAlimentsPerso`). Éditeur d'aliments perso (carte « Mes aliments » : ajout/édition/suppression, kcal saisies ou dérivées Atwater). Picker hors-plan repensé : **recherche** (accent-insensible) + **filtre par catégorie**, aliments perso marqués ★ et calculés via le catalogue fusionné. **+4 tests** (migration v2→v3, `assainirAlimentsPerso`). 162 tests verts. `sw.js` v19.
+- ✅ **Synchro perso** : extension de `fusion.js` **validée explicitement** (2026-06-20). Les aliments perso se fusionnent désormais par clé (l'entrant gagne) → propagation entre appareils. Fait dans V3.4a.
 
-### V3.4 — Multi-menus (E1) + Plats composés (E4)
-- `plansAlim[]` + `planAlimActif` (modèle Muscu) + éditeur de menu.
-- `plats[]` : recette réutilisable, macros dérivées des composants.
+### V3.4 — Multi-menus (E1) + Plats composés (E4) ✅ FAIT
+- [x] **V3.4a** — Multi-menus (E1). Source de vérité : `plansAlim[]` + `planAlimActif` (modèle Muscu `programmes[]`/`programmeActif`) ; l'ancien `etat.plan` disparaît (devient le menu actif). `js/plans.js` (pur) : `menuActif`/`repasActifs`. **Migration schéma 3→4** (wrap `plan`→`plansAlim`, supprime `plan`). `defaults` + `Store._appliquerDefauts` + `assainirPlansAlim`. **`fusion.js` étendu** (validé) : menus par id + `planAlimActif` + repli legacy `plan` + **aliments perso par clé**. RepasModule/CoursesModule refactorés sur `planActif()`/`repasActifs`. UI : carte « Menu » (sélecteur + nouveau/dupliquer/renommer/supprimer ; édition du contenu via « Réorganiser »). **+11 tests** (`plans`, migration 3→4, `assainirPlansAlim`, fusion menus+perso ; `defauts`/`fusion` mis à jour). `sw.js` v20.
+- [x] **V3.4b** — Plats composés (E4). `etat.plats = [{id, nom, composants:[[cle,qté]]}]` ; macros dérivées via `nutrition.macrosPlat(composants, aliments)` (catalogue fusionné ; composant inconnu/≤0 ignoré). **Migration schéma 4→5** + `defaults` + `Store` + `assainirPlats` + **fusion `plats` par id**. UI : carte « Mes plats » — éditeur (recherche d'aliments + composants + total live, ajout/édition/suppression) et liste « **+ Au journal** » qui journalise un plat d'un tap (entrée hors-plan agrégeant les 4 macros, items = composants ; l'affichage des extras indique « N aliments »). **+6 tests** (`macrosPlat`, `assainirPlats`, migration 4→5, fusion plats). 178 tests verts. `sw.js` v21.
 
-### V3.5 — Verdict multi-objectif + Courses dérivées
-- `decisionVerdict` paramétré par `objectif.type` ; consigne exprimée en kcal/macros.
-- Courses dérivées des menus actifs (et plats).
+### V3.5 — Verdict multi-objectif + Courses dérivées ✅ FAIT
+- [x] **Verdict multi-objectif** : `decisionVerdict({…, objectif})` dispatche vers 3 arbres (`seche`/`recompo`/`masse`). La **recompo est inchangée** (les 11 tests d'origine restent verts ; arbre extrait dans `verdictRecompo`). Sèche : perte 0,3–1 kg/mois = RAS ; < −1 → +150 (préserver le muscle) ; perte molle + taille pas ↓ → −150 (creuser) ; balance stable mais taille ↓ → « le gras part ». Masse : prise 0,2–0,7 kg/mois = RAS ; > +0,7 + taille ↑ → −150 ; n'avance pas → +150. Consignes en **kcal** (équivalence riz/banane). `SCENARIOS` par objectif exportés.
+- [x] **VerdictModule** : passe `objectif` (validé, défaut recompo), rend les **cartes scénario dynamiquement** selon l'objectif + badge objectif (#verdict-obj). Cartes statiques de l'`index.html` remplacées par `#scenarios` rendu en JS.
+- [x] **Courses dérivées du menu actif** : effectif depuis V3.4a (`CoursesModule` utilise `repasActifs`) ; quantités recalculées au changement de menu. Note UI clarifiée (« depuis le menu actif »).
+- **+8 tests** (sèche/masse + repli objectif inconnu). 186 tests verts. `sw.js` v22.
+- ↪ Plats dans les courses : non retenu (les plats sont journalisés à la demande, pas planifiés → pas de dérivation bien définie).
 
 ### Plomberie (entrelacée, à iso-fonctionnel)
 - Sélecteurs mémoïsés (T3), rendu ciblé + `Chart.update()` (T2), bus d'événements (T5), éclatement de `MuscuModule` — appliqués au fil des fichiers déjà ouverts pour limiter le risque de régression.

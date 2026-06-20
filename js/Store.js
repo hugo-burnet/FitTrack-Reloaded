@@ -76,14 +76,23 @@ export class Store extends EventTarget {
     if(!Array.isArray(etat.mensurations)) etat.mensurations = def.mensurations;
     if(!etat.profil || typeof etat.profil !== 'object') etat.profil = def.profil;
     if(!etat.objectif || typeof etat.objectif !== 'object') etat.objectif = def.objectif;
+    /* aliments perso (E2) : dictionnaire {cle: {…}} ; jamais absent pour que l'éditeur écrive sereinement */
+    if(!etat.aliments || typeof etat.aliments !== 'object') etat.aliments = def.aliments;
+    if(!etat.aliments.perso || typeof etat.aliments.perso !== 'object') etat.aliments.perso = {};
+    /* plats composés (E4) : collection de recettes réutilisables ; jamais absente */
+    if(!Array.isArray(etat.plats)) etat.plats = def.plats;
     if(typeof etat.objectifKcal !== 'number') etat.objectifKcal = def.objectifKcal;
     if(!etat.repas || typeof etat.repas !== 'object') etat.repas = def.repas;
     if(!etat.repas.coches) etat.repas.coches = {};
     /* planJour : déplacements d'aliments valables seulement aujourd'hui (sinon null).
        Réinitialisé à minuit comme les cochages (cf. resetSiNouveauJour). */
     if(!Array.isArray(etat.repas.planJour)) etat.repas.planJour = null;
-    /* plan nutritionnel ÉDITABLE (déplacement d'aliments entre repas). Défaut = PLAN de référence. */
-    if(!Array.isArray(etat.plan) || !etat.plan.length) etat.plan = def.plan;
+    /* multi-menus (E1) : collection ÉDITABLE + menu actif (modèle programmes/programmeActif).
+       Le menu actif porte les repas (déplacement d'aliments entre repas). Défaut = PLAN de référence. */
+    if(!Array.isArray(etat.plansAlim) || !etat.plansAlim.length) etat.plansAlim = def.plansAlim;
+    if(!etat.planAlimActif || !etat.plansAlim.some(p=>p.id===etat.planAlimActif)) etat.planAlimActif = etat.plansAlim[0].id;
+    const menuActif = etat.plansAlim.find(p=>p.id===etat.planAlimActif);
+    if(!Array.isArray(menuActif.repas) || !menuActif.repas.length) menuActif.repas = def.plansAlim[0].repas;
     /* nouveaux modules : journal repas, muscu, courses */
     if(!Array.isArray(etat.journalRepas)) etat.journalRepas = def.journalRepas;
     if(!Array.isArray(etat.programmes) || !etat.programmes.length) etat.programmes = def.programmes;
