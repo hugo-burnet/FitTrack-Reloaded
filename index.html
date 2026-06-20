@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d0e11">
+<title>Carnet Recompo</title>
+<!-- PWA : installable + démarrage hors-ligne (specs 2.4) -->
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Recompo">
+<meta name="mobile-web-app-capable" content="yes">
+<!-- Typo : Inter via system-ui (SF Pro sur iOS) — aucune dépendance réseau, zéro fichier -->
+<link rel="stylesheet" href="styles.css">
+<!-- Chart.js vendoré (4.4.1) : démarrage garanti hors-ligne (salle, réseau instable),
+     zéro dépendance réseau, pas de risque supply-chain CDN (cf. specs 2.3) -->
+<script src="vendor/chart.umd.min.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="titre">Carnet <span>Recompo</span></div>
+  <div class="sous-titre">Pesée le dimanche · mensurations le 1er du mois · le tour de taille dit la vérité</div>
+</header>
+
+<div class="bandeau" id="bandeau">
+  <div class="stat"><div class="v mono" id="st-poids">—</div><div class="l">Moy. 7j (kg)</div><div class="d" id="st-poids-d"></div></div>
+  <div class="stat"><div class="v mono" id="st-taille">—</div><div class="l">Taille (cm)</div><div class="d" id="st-taille-d"></div></div>
+  <div class="stat"><div class="v mono" id="st-bras">—</div><div class="l">Bras (cm)</div><div class="d" id="st-bras-d"></div></div>
+</div>
+
+<div id="storage-warn" class="avert cache" style="margin:14px 16px 0">
+  ⚠ Stockage local indisponible dans cet environnement : les données ne survivront pas à la fermeture de l'onglet. Utilise Exporter/Importer. (Sur GitHub Pages, la sauvegarde sera automatique.)
+</div>
+
+<!-- Écran de récupération : affiché si le rendu initial crashe, pour permettre au minimum d'exporter -->
+<div id="ecran-recuperation" class="ecran-recup cache" role="alertdialog" aria-modal="true" aria-labelledby="recup-titre">
+  <div class="recup-carte">
+    <h2 id="recup-titre">⚠ Démarrage impossible</h2>
+    <p>Une erreur empêche l'affichage du carnet, mais <b>tes données sont toujours là</b>. Exporte-les maintenant pour les mettre en sécurité, puis recharge la page.</p>
+    <button class="btn" id="recup-export">⬇ Exporter mes données (secours)</button>
+    <button class="btn btn-2" id="recup-reload" type="button">↻ Recharger la page</button>
+    <details><summary>Détail technique</summary><pre id="recup-detail" class="mono"></pre></details>
+  </div>
+</div>
+
+<main>
+
+  <!-- ===== ONGLET VERDICT ===== -->
+  <section class="onglet actif" id="ong-verdict">
+    <div class="verdict v-neutre" id="verdict-box">
+      <div class="tampon" id="verdict-tampon">Données insuffisantes</div>
+      <div class="explication" id="verdict-expl">Entre au moins 2 semaines de pesées et 2 relevés de taille pour obtenir un verdict.</div>
+      <div class="donnees" id="verdict-data"></div>
+    </div>
+
+    <!-- Reads hebdo entre deux verdicts mensuels (specs 4.4) -->
+    <div class="carte" id="carte-semaine">
+      <h2>Cette semaine</h2>
+      <div class="semaine-grille">
+        <div class="sem-read">
+          <div class="sem-lib">Tendance</div>
+          <div class="sem-val mono" id="sem-trend">—</div>
+          <div class="sem-sub" id="sem-trend-sub">kg/mois</div>
+        </div>
+        <div class="sem-read">
+          <div class="sem-lib">Protéines</div>
+          <div class="sem-val mono" id="sem-prot">—</div>
+          <div class="sem-sub">jours à la cible (7 j)</div>
+        </div>
+        <div class="sem-read">
+          <div class="sem-lib">Séances</div>
+          <div class="sem-val mono" id="sem-seances">—</div>
+          <div class="sem-sub">sur 7 jours</div>
+        </div>
+      </div>
+      <div class="sem-force" id="sem-force"></div>
+    </div>
+
+    <div class="carte">
+      <h2>L'arbre de décision</h2>
+      <ul class="scenarios">
+        <li class="sc sc-ok">
+          <div class="sc-cond"><span class="cond-p">Poids 0 à +0,3 kg/mois</span><span class="cond-t">taille stable ou ↓</span></div>
+          <div class="sc-verdict">Continue — ne change rien</div>
+        </li>
+        <li class="sc sc-baisse">
+          <div class="sc-cond"><span class="cond-p">Poids &gt; +0,5 kg/mois</span><span class="cond-t">taille ↑</span></div>
+          <div class="sc-verdict">−150 kcal — retire 30 g de riz cru</div>
+        </li>
+        <li class="sc sc-hausse">
+          <div class="sc-cond"><span class="cond-p">Poids &lt; −0,5 kg/mois</span><span class="cond-t">taille ↓</span></div>
+          <div class="sc-verdict">+150 kcal — ajoute du riz ou 1 banane</div>
+        </li>
+        <li class="sc sc-hausse">
+          <div class="sc-cond"><span class="cond-p">Poids stable</span><span class="cond-t">taille stable, bras stagne 6 sem.</span></div>
+          <div class="sc-verdict">+100-150 kcal</div>
+        </li>
+      </ul>
+      <p class="note"><b>Un seul ajustement à la fois</b>, puis 4 semaines d'observation. Jamais calories ET programme en même temps.</p>
+    </div>
+  </section>
+
+  <!-- ===== ONGLET REPAS ===== -->
+  <section class="onglet" id="ong-repas">
+    <div class="carte">
+      <h2>Objectif du jour</h2>
+      <div class="obj-ligne">
+        <button class="obj-pas" data-action="obj-step" data-delta="-50" aria-label="−50 kcal">−</button>
+        <div class="obj-val"><input type="number" id="obj-kcal" step="50" inputmode="numeric"><span>kcal</span></div>
+        <button class="obj-pas" data-action="obj-step" data-delta="50" aria-label="+50 kcal">+</button>
+      </div>
+      <div id="flex-warn" class="avert cache" style="margin-top:12px"></div>
+      <p class="note">Protéines et lipides restent fixés à leurs cibles : seuls le riz et l'avoine s'ajustent, comme le dit ton onglet Verdict. <b>Quand le verdict te dit ±150 kcal, change ce nombre ici.</b></p>
+    </div>
+
+    <!-- Cible explicite du jour + écart en temps réel (kcal ET protéines) -->
+    <div class="carte progression" id="carte-cible">
+      <div class="cible-grille">
+        <div class="cible-bloc">
+          <div class="cible-haut"><span class="cible-lib">Calories</span><span class="cible-reste mono" id="reste-kcal"></span></div>
+          <div class="prog-barre"><div class="prog-rempli" id="bar-kcal"></div></div>
+          <div class="cible-chiffre mono" id="cible-kcal">0 / 0 kcal</div>
+        </div>
+        <div class="cible-bloc">
+          <div class="cible-haut"><span class="cible-lib">Protéines</span><span class="cible-reste mono" id="reste-prot"></span></div>
+          <div class="prog-barre"><div class="prog-rempli prot" id="bar-prot"></div></div>
+          <div class="cible-chiffre mono" id="cible-prot">0 / 0 g</div>
+        </div>
+      </div>
+      <div class="cible-pied mono" id="cible-repas">0 / 5 repas cochés</div>
+    </div>
+
+    <!-- Suggestions de comblement protéique (affiché seulement si déficit) -->
+    <div class="carte cache" id="carte-comblement">
+      <h2>Combler les protéines</h2>
+      <p class="note" id="comblement-txt" style="margin-top:0"></p>
+      <div class="chips" id="comblement-options"></div>
+    </div>
+
+    <div class="repas-reorg-tete">
+      <button class="btn btn-2" id="btn-repas-reorg" type="button">⇄ Réorganiser les repas</button>
+    </div>
+    <div id="repas-reorg-bar" class="reorg-bar cache"></div>
+    <div id="liste-repas"></div>
+
+    <!-- Log de substitution / hors-plan : journalise la RÉALITÉ (resto, écart…) -->
+    <div class="carte">
+      <h2>J'ai mangé autre chose</h2>
+      <div id="extras-liste"></div>
+      <button class="btn btn-2" id="btn-extra-toggle" type="button">+ Ajouter un aliment hors-plan</button>
+      <div id="extra-form" class="cache">
+        <div class="champ">
+          <label for="extra-aliment">Aliment</label>
+          <select id="extra-aliment">
+            <option value="">— Saisie libre (resto, plat composé…) —</option>
+          </select>
+        </div>
+        <div id="extra-aliment-q" class="champ cache">
+          <label for="extra-qte">Quantité <span id="extra-unite" class="lbl-opt">g</span></label>
+          <input type="number" id="extra-qte" inputmode="decimal" min="0" step="1" placeholder="ex. 150">
+        </div>
+        <div id="extra-libre">
+          <div class="champ"><label for="extra-nom">Nom</label><input type="text" id="extra-nom" placeholder="ex. Pizza margherita"></div>
+          <div class="ligne">
+            <div><label for="extra-kcal">kcal</label><input type="number" id="extra-kcal" inputmode="numeric" min="0" placeholder="600"></div>
+            <div><label for="extra-prot">Protéines (g)</label><input type="number" id="extra-prot" inputmode="decimal" min="0" placeholder="25"></div>
+          </div>
+        </div>
+        <div class="extra-apercu mono" id="extra-apercu"></div>
+        <button class="btn" id="btn-extra-add" type="button">Ajouter au journal du jour</button>
+      </div>
+      <p class="note">Ce qui est ajouté ici est journalisé <b>tel que mangé</b> et compte dans la cible & l'export — contrairement au plan, qui n'est qu'une suggestion.</p>
+    </div>
+
+    <p class="note" style="text-align:center">Les repas se décochent seuls à minuit (les extras hors-plan aussi). Touche « Annuler » sur un repas pris pour revenir en arrière.</p>
+  </section>
+
+  <!-- ===== ONGLET MUSCU ===== -->
+  <section class="onglet" id="ong-muscu">
+    <div class="carte niveau-carte" id="muscu-niveau"></div>
+
+    <div class="carte">
+      <h2>Séance du jour</h2>
+      <div class="champ">
+        <label for="muscu-prog">Programme</label>
+        <select id="muscu-prog"></select>
+      </div>
+      <label>Choisis la séance</label>
+      <div class="chips" id="muscu-jours"></div>
+      <div id="muscu-form"></div>
+      <p class="note">Chaque exercice affiche son <b>objectif « 0 doute »</b> : suis-le, et la barre de niveau te dit quand monter la charge. Active <b>« Unilatéral · charge d'un côté »</b> si tu travailles bras/jambe séparément : la charge saisie est alors celle d'<b>un seul côté</b> (le volume compte les deux). Une rep avec élan ne compte pas.</p>
+    </div>
+
+    <div id="muscu-recap"></div>
+
+    <div class="carte">
+      <h2>Progression par exercice</h2>
+      <div class="champ">
+        <label for="prog-exo">Exercice</label>
+        <select id="prog-exo"></select>
+      </div>
+      <div class="graph-box"><canvas id="graph-prog"></canvas></div>
+      <p class="note">Courbe du <b>1RM estimé</b> (Epley, sur ta meilleure série) et du <b>volume</b> total. La pente vers le haut = surcharge progressive réussie.</p>
+    </div>
+
+    <div class="carte">
+      <h2>Programmes & exercices</h2>
+      <button class="btn btn-2" id="btn-editeur">✎ Modifier les programmes</button>
+      <div id="muscu-editeur" class="cache"></div>
+      <p class="note">Crée et modifie tes programmes ici. Pour <b>importer un programme</b> reçu en JSON, passe par l'onglet <b>Données</b> : un fichier ne contenant que <span class="mono">programmes</span> et/ou <span class="mono">seances</span> fusionne sans toucher au reste.</p>
+    </div>
+
+    <div class="carte">
+      <h2>Séances enregistrées</h2>
+      <div id="muscu-hist"></div>
+    </div>
+  </section>
+
+  <!-- ===== ONGLET MESURES (poids + mensurations) ===== -->
+  <section class="onglet" id="ong-mesures">
+    <div class="carte">
+      <h2>Nouvelle pesée</h2>
+      <div class="ligne">
+        <div><label for="p-date">Date</label><input type="date" id="p-date"></div>
+        <div><label for="p-kg">Poids (kg)</label><input type="number" id="p-kg" step="0.1" min="40" max="150" inputmode="decimal" placeholder="72.0"></div>
+      </div>
+      <button class="btn" id="btn-poids">Enregistrer la pesée</button>
+      <p class="note">À jeun, après les toilettes, avant de boire. La moyenne hebdo lisse les ±1 kg d'eau.</p>
+    </div>
+
+    <div class="carte">
+      <h2>Courbe</h2>
+      <div class="graph-box"><canvas id="graph-poids"></canvas></div>
+    </div>
+
+    <div class="carte">
+      <h2>Historique</h2>
+      <div id="hist-poids"></div>
+    </div>
+
+    <div class="carte">
+      <h2>Relevé du 1er du mois</h2>
+      <div class="champ"><label for="m-date">Date</label><input type="date" id="m-date"></div>
+      <div class="ligne">
+        <div><label for="m-taille">Taille contractée (cm)</label><input type="number" id="m-taille" step="0.1" inputmode="decimal" placeholder="86.0"></div>
+        <div><label for="m-tailler">Taille relâchée (cm)</label><input type="number" id="m-tailler" step="0.1" inputmode="decimal"></div>
+      </div>
+      <div class="ligne-3">
+        <div><label for="m-bras">Bras (cm)</label><input type="number" id="m-bras" step="0.1" inputmode="decimal" placeholder="32.3"></div>
+        <div><label for="m-cuisse">Cuisse (cm)</label><input type="number" id="m-cuisse" step="0.1" inputmode="decimal"></div>
+        <div><label for="m-torse">Torse (cm)</label><input type="number" id="m-torse" step="0.1" inputmode="decimal" placeholder="95"></div>
+      </div>
+      <button class="btn" id="btn-mens">Enregistrer le relevé</button>
+      <p class="note">Toujours le même point : bras contracté au plus large (repère ton tatouage), taille au nombril debout. <b>+ 2 photos même lumière même pose.</b></p>
+    </div>
+
+    <div class="carte">
+      <h2>Taille vs bras</h2>
+      <div class="graph-box"><canvas id="graph-mens"></canvas></div>
+    </div>
+
+    <div class="carte">
+      <h2>Historique</h2>
+      <div id="hist-mens"></div>
+    </div>
+  </section>
+
+  <!-- ===== ONGLET COURSES ===== -->
+  <section class="onglet" id="ong-courses">
+    <div class="carte progression">
+      <div class="prog-haut">
+        <span class="prog-titre" id="courses-compte">0 / 0</span>
+        <div class="prog-actions">
+          <button class="repas-annuler" id="btn-cocher-courses">Tout cocher</button>
+          <button class="repas-annuler" id="btn-decocher-courses">Tout décocher</button>
+        </div>
+      </div>
+      <div class="prog-barre"><div class="prog-rempli" id="courses-rempli"></div></div>
+    </div>
+
+    <div class="carte">
+      <h2>Liste de courses</h2>
+      <div class="courses-reglage">
+        <label for="courses-jours">Quantités pour</label>
+        <input type="number" id="courses-jours" min="1" max="60" step="1" inputmode="numeric">
+        <span>jours</span>
+      </div>
+      <div id="courses-liste"></div>
+      <p class="note">Les quantités <span class="course-qte derivee" style="padding:0">en bleu</span> sont <b>calculées depuis ton plan × le nombre de jours</b> et suivent ton objectif kcal (le riz/avoine s'ajuste). Les autres sont des repères figés que tu peux éditer. Coche au fur et à mesure ; « Tout décocher » remet à blanc pour la semaine suivante.</p>
+    </div>
+
+    <div class="carte">
+      <h2>Ajouter un article</h2>
+      <div class="champ"><label for="course-nom">Article</label><input type="text" id="course-nom" placeholder="Ex. Fromage blanc 3%"></div>
+      <div class="ligne">
+        <div><label for="course-qte">Quantité</label><input type="text" id="course-qte" placeholder="500 g"></div>
+        <div><label for="course-cat">Rayon</label><select id="course-cat">
+          <option>Frais</option><option>Épicerie</option><option>Stock (2-4 sem)</option><option>Réassort mensuel</option><option>Autre</option>
+        </select></div>
+      </div>
+      <button class="btn" id="btn-ajouter-course">Ajouter à la liste</button>
+    </div>
+  </section>
+
+  <!-- ===== ONGLET DONNÉES ===== -->
+  <section class="onglet" id="ong-data">
+    <div class="carte">
+      <h2>Synchro automatique (Gist GitHub)</h2>
+      <p class="note" style="margin:0 0 12px">Sauvegarde et synchro <b>PC ↔ mobile automatiques</b> via un <b>Gist GitHub secret</b>. À chaque modif, le carnet l'écrit dans le gist ; au démarrage il le relit et fusionne (par date / id). Crée un <b>token fine-grained avec le seul scope « Gists »</b> sur GitHub, colle-le ci-dessous, laisse l'ID vide pour qu'un gist soit créé automatiquement.</p>
+      <!-- Vrai <form> + champ password NOMMÉ : le gestionnaire de mots de passe de l'OS
+           (Trousseau iCloud / Google) propose de mémoriser le token et l'autofill →
+           « saisi une fois, rempli partout ». L'ID de gist sert d'identifiant de compte. -->
+      <p class="note sync-statut sync-inactif" id="sync-status">Synchro non configurée.</p>
+      <form id="form-sync" class="sync-form" autocomplete="on">
+        <div class="champ">
+          <label for="sync-gist">ID du Gist <span class="lbl-opt">vide = création auto</span></label>
+          <input type="text" id="sync-gist" name="gist_id" class="champ-mono" autocomplete="username"
+                 inputmode="latin" autocapitalize="off" autocorrect="off" spellcheck="false"
+                 placeholder="ex. 3f9a1c…">
+        </div>
+        <div class="champ">
+          <label for="sync-token">Token d'accès <span class="lbl-opt">fine-grained · scope Gists</span></label>
+          <input type="password" id="sync-token" name="github_token" class="champ-mono" autocomplete="current-password"
+                 autocapitalize="off" autocorrect="off" spellcheck="false"
+                 placeholder="github_pat_…">
+        </div>
+        <button class="btn" id="btn-sync-save" type="submit">Enregistrer &amp; synchroniser</button>
+        <div class="sync-actions">
+          <button class="btn btn-2" id="btn-sync-now" type="button">↻ Synchroniser</button>
+          <button class="btn btn-2" id="btn-sync-clear" type="button">Oublier le token</button>
+        </div>
+      </form>
+      <p class="note">🔒 Le token reste <b>uniquement</b> dans ce navigateur (saisie + stockage local). Il n'est <b>jamais</b> dans le code, le JSON exporté, ni le gist de données. Le dépôt GitHub Pages peut rester public sans risque : aucun secret n'est dans le code. La synchro échoue silencieusement hors-ligne — tes données restent en local et repartent au retour du réseau.</p>
+    </div>
+
+    <div class="carte">
+      <h2>Export / import manuel (filet de sécurité)</h2>
+      <p class="note" style="margin:0 0 12px">Les données sont enregistrées automatiquement dans ce navigateur. Le JSON est le <b>filet de secours</b> si tu n'utilises pas la synchro Gist : exporte ici, importe là-bas. L'export détaille tout : pesées, mensurations, <b>repas réellement mangés (avec quantités)</b>, <b>séances (charge × reps par série)</b>, programmes et liste de courses. L'import fusionne intelligemment (par date / id, le fichier importé gagne).</p>
+      <p class="note" style="margin:0 0 12px">Pour <b>importer un programme</b> seul, le fichier JSON peut ne contenir que la clé <span class="mono">programmes</span> : <span class="mono">[{"id","nom","jours":[{"id","nom","exercices":[{"nom","series","reps","note"}]}]}]</span>.</p>
+      <button class="btn" id="btn-export">⬇ Exporter le JSON</button>
+      <div style="height:10px"></div>
+      <button class="btn btn-2" id="btn-import">⬆ Importer un JSON</button>
+      <input type="file" id="fichier-import" accept=".json,application/json" class="cache">
+      <label class="opt-auto"><input type="checkbox" id="opt-auto-export"> Télécharger une sauvegarde JSON après chaque séance enregistrée</label>
+      <p class="note" id="derniere-sauvegarde"></p>
+      <p class="note"><b>L'historique des séances de muscu n'est jamais réinitialisé</b> (seuls les repas se décochent à minuit). Une copie miroir est conservée en local au cas où le navigateur purgerait le stockage.</p>
+    </div>
+    <div class="carte">
+      <h2>Zone rouge</h2>
+      <button class="btn btn-danger" id="btn-effacer">Effacer toutes les données</button>
+      <p class="note">Irréversible. Exporte d'abord. Efface aussi la <b>copie cloud (Gist)</b> si la synchro est active — le token, lui, reste (utilise « Oublier le token » pour l'enlever).</p>
+    </div>
+  </section>
+
+</main>
+
+<div id="rest-timer" class="rest-timer cache" role="timer" aria-live="off">
+  <button class="rt-btn rt-x" data-rt="skip" aria-label="Fermer le chrono">✕</button>
+  <div class="rt-body">
+    <div class="rt-head"><span class="rt-label">Repos</span><span class="rt-time mono">0:00</span></div>
+    <div class="rt-bar"><div class="rt-fill"></div></div>
+  </div>
+  <button class="rt-btn" data-rt="add">+15s</button>
+  <button class="rt-btn rt-toggle" data-rt="toggle" aria-label="Pause">⏸</button>
+</div>
+
+<nav>
+  <button class="actif" data-ong="verdict">
+    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15a8 8 0 0 1 16 0"/><path d="M12 15l4.5-3.5"/></svg></span>Verdict</button>
+  <button data-ong="repas">
+    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11h16"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 11V4"/></svg></span>Repas</button>
+  <button data-ong="muscu">
+    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10"/></svg></span>Muscu</button>
+  <button data-ong="mesures">
+    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5v14h16"/><path d="M7 15l3.5-4.5 3 2L18 7"/></svg></span>Mesures</button>
+  <button data-ong="courses">
+    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9.5" cy="20" r="1.2"/><circle cx="17" cy="20" r="1.2"/><path d="M3 4h2.2l2.3 11h9.5l1.8-7H6.3"/></svg></span>Courses</button>
+  <button data-ong="data">
+    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.6 3.1 3 7 3s7-1.4 7-3V6"/><path d="M5 12c0 1.6 3.1 3 7 3s7-1.4 7-3"/></svg></span>Données</button>
+</nav>
+
+<script type="module" src="js/main.js"></script>
+<!-- enregistre le service worker (indépendant du graphe de modules : survit à un crash app) -->
+<script>
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>

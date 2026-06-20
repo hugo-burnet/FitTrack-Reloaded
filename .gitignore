@@ -1,0 +1,19 @@
+# Réglages locaux Claude Code (permissions propres à la machine)
+.claude/settings.local.json
+
+# Code de référence de l'ancienne version (FitTrack) — conservé en local, hors dépôt
+_Archives/
+
+# Dépendances (le projet n'en a aucune — vanilla — mais au cas où)
+node_modules/
+
+# Fichiers système / éditeur
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# Divers
+*.log
