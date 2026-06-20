@@ -177,7 +177,7 @@ export class RepasModule {
       if(e.target.id==='extra-recherche') this.remplirPickerAliments();
       if(e.target.id==='plat-recherche') this.remplirPlatPicker();
       if(e.target.id==='extra-qte' || e.target.id==='extra-kcal' || e.target.id==='extra-prot') this.majApercuExtra();
-      if(e.target.id==='bes-age' || e.target.id==='bes-stature') this.renderBesoinsResultat();   /* aperçu live */
+      if(e.target.id==='bes-age' || e.target.id==='bes-stature') this.majApercuProfil();   /* maj profil + aperçu live à la frappe */
     });
     $('obj-kcal').addEventListener('change', () => this.majObjectif());
   }
@@ -636,7 +636,8 @@ export class RepasModule {
   }
 
   /* champs profil → état (persisté), puis rafraîchit l'aperçu */
-  majProfilDepuisChamps(){
+  /* lit les champs du calculateur vers etat.profil EN MÉMOIRE (sans persister) */
+  lireProfilDepuisChamps(){
     const prof = this.etat.profil || (this.etat.profil = { sexe:null, age:null, stature:null });
     const sexe = $('bes-sexe').value;
     prof.sexe = (sexe==='homme'||sexe==='femme') ? sexe : null;
@@ -644,9 +645,11 @@ export class RepasModule {
     prof.age = Number.isFinite(age) ? age : null;
     const st = parseInt($('bes-stature').value, 10);
     prof.stature = Number.isFinite(st) ? st : null;
-    this.store.sauver();
-    this.renderBesoinsResultat();
   }
+  /* frappe (input) : maj du profil en mémoire + aperçu live, SANS sauver à chaque touche */
+  majApercuProfil(){ this.lireProfilDepuisChamps(); this.renderBesoinsResultat(); }
+  /* validation (change/blur) : on persiste le profil */
+  majProfilDepuisChamps(){ this.lireProfilDepuisChamps(); this.store.sauver(); this.renderBesoinsResultat(); }
   choisirObjectif(type){
     if(!OBJECTIFS.includes(type)) return;
     if(!this.etat.objectif || typeof this.etat.objectif!=='object') this.etat.objectif = {};
@@ -657,7 +660,7 @@ export class RepasModule {
   appliquerBesoins(){
     const r = this.calculBesoins();
     if(!r.valide){
-      const lib = { sexe:'le sexe', age:'l’âge', stature:'la taille', poids:'une pesée' };
+      const lib = { sexe:'le sexe', age:'l’âge', stature:'la taille', poids:'une pesée (onglet Mesures)' };
       toast('Renseigne ' + r.manque.map(m=>lib[m]||m).join(', ') + ' pour calculer.', 'erreur');
       return;
     }
@@ -685,7 +688,7 @@ export class RepasModule {
     const el = $('bes-resultat'); if(!el) return;
     const r = this.calculBesoins();
     if(!r.valide){
-      const lib = { sexe:'sexe', age:'âge', stature:'taille (cm)', poids:'une pesée' };
+      const lib = { sexe:'sexe', age:'âge', stature:'taille (cm)', poids:'une pesée (onglet Mesures)' };
       el.innerHTML = `<p class="note" style="margin:0">Renseigne ${r.manque.map(m=>lib[m]||m).join(', ')} pour obtenir une cible.</p>`;
       return;
     }
