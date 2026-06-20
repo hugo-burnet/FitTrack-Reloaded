@@ -1,6 +1,6 @@
 import { $, echap, cloneProfond, aujourdHui } from '../utils.js';
 import { ALIMENTS } from '../data.js';
-import { kcalItem, protItem, facteurFlex, flexSature, protCible } from '../nutrition.js';
+import { kcalItem, protItem, glucItem, lipItem, fibItem, facteurFlex, flexSature, protCible, macrosCible } from '../nutrition.js';
 import { moyennesHebdo } from '../stats.js';
 import { calculerBesoins, frequenceHebdo, OBJECTIFS } from '../besoins.js';
 import { toast } from '../ui.js';
@@ -88,15 +88,25 @@ export class RepasModule {
   }
   repasKcal(r){ return r.items.reduce((s,[cle,q])=>s+kcalItem(cle, this.qteAjustee(cle,q)),0); }
   repasProt(r){ return r.items.reduce((s,[cle,q])=>s+protItem(cle, this.qteAjustee(cle,q)),0); }
+  repasGluc(r){ return r.items.reduce((s,[cle,q])=>s+glucItem(cle, this.qteAjustee(cle,q)),0); }
+  repasLip(r){  return r.items.reduce((s,[cle,q])=>s+lipItem(cle,  this.qteAjustee(cle,q)),0); }
+  repasFib(r){  return r.items.reduce((s,[cle,q])=>s+fibItem(cle,  this.qteAjustee(cle,q)),0); }
 
-  /* cible du jour : kcal = objectif réglé ; protéines = ce que le plan délivre (fixe) */
-  cibles(){ return { kcal:this.etat.objectifKcal, prot:protCible(this.etat.objectifKcal, this.etat.plan) }; }
+  /* cible du jour : kcal = objectif réglé ; macros = ce que le plan délivre (flex ajusté) */
+  cibles(){
+    const m = macrosCible(this.etat.objectifKcal, this.etat.plan);
+    return { kcal:this.etat.objectifKcal, prot:m.prot, gluc:m.gluc, lip:m.lip, fib:m.fib };
+  }
 
   /* ---- journal du jour (= réalité) ---- */
   journalDuJour(){ const j=this.etat.repas.jour; return this.etat.journalRepas.filter(e=>e.date===j); }
   extrasDuJour(){ return this.journalDuJour().filter(e=>e.horsPlan); }
   consomme(){
-    return this.journalDuJour().reduce((s,e)=>({kcal:s.kcal+(e.kcal||0), prot:s.prot+(e.prot||0)}), {kcal:0,prot:0});
+    /* anciennes entrées sans gluc/lip/fib (legacy V3.1−) → comptées 0, jamais NaN */
+    return this.journalDuJour().reduce((s,e)=>({
+      kcal:s.kcal+(e.kcal||0), prot:s.prot+(e.prot||0),
+      gluc:s.gluc+(e.gluc||0), lip:s.lip+(e.lip||0), fib:s.fib+(e.fib||0),
+    }), {kcal:0,prot:0,gluc:0,lip:0,fib:0});
   }
 
   /* ---- cochage : un tap prend le repas (ne décoche jamais) ; bouton Annuler explicite ---- */
@@ -121,6 +131,7 @@ export class RepasModule {
     });
     this.etat.journalRepas.push({ date:jour, id, nom:r.nom,
       kcal:Math.round(this.repasKcal(r)), prot:Math.round(this.repasProt(r)),
+      gluc:Math.round(this.repasGluc(r)), lip:Math.round(this.repasLip(r)), fib:Math.round(this.repasFib(r)),
       objectifKcal:this.etat.objectifKcal, items });
   }
   deJournaliserRepas(id){
@@ -136,13 +147,17 @@ export class RepasModule {
     const id = 'x-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
     const item = { cle:d.cle||null, nom:d.nom, qte:d.qte!=null?d.qte:null, unite:d.unite||'' };
     this.etat.journalRepas.push({ date:jour, id, nom:d.nom, horsPlan:true,
-      kcal:Math.round(d.kcal)||0, prot:Math.round(d.prot)||0, objectifKcal:this.etat.objectifKcal, items:[item] });
+      kcal:Math.round(d.kcal)||0, prot:Math.round(d.prot)||0,
+      gluc:Math.round(d.gluc)||0, lip:Math.round(d.lip)||0, fib:Math.round(d.fib)||0,
+      objectifKcal:this.etat.objectifKcal, items:[item] });
     this.store.sauver(); this.render();
   }
   ajouterExtraAliment(cle, qte){
     const a = ALIMENTS[cle]; if(!a || !(qte>0)) return;
     const unite = a.unite!==undefined ? (a.unite||'unité') : 'g';
-    this.ajouterExtra({ cle, nom:a.nom, qte, unite, kcal:kcalItem(cle,qte), prot:protItem(cle,qte) });
+    this.ajouterExtra({ cle, nom:a.nom, qte, unite,
+      kcal:kcalItem(cle,qte), prot:protItem(cle,qte),
+      gluc:glucItem(cle,qte), lip:lipItem(cle,qte), fib:fibItem(cle,qte) });
   }
   supprimerExtra(id){
     const jour = this.etat.repas.jour;
@@ -360,6 +375,14 @@ export class RepasModule {
     $('bar-prot').style.width = (c.prot ? Math.min(100, 100*conso.prot/c.prot) : 0).toFixed(0)+'%';
     this._reste($('reste-kcal'), resteK, '');
     this._reste($('reste-prot'), resteP, ' g');
+
+    /* répartition macros complètes (E3) : glucides / lipides / fibres consommés / cible */
+    $('cible-macros').innerHTML = [
+      this._macroMini('Glucides', conso.gluc, c.gluc),
+      this._macroMini('Lipides',  conso.lip,  c.lip),
+      this._macroMini('Fibres',   conso.fib,  c.fib),
+    ].join('');
+
     const prisN = plan.filter(r=>this.etat.repas.coches[r.id]).length;
     $('cible-repas').textContent = `${prisN} / ${plan.length} repas du plan cochés`;
 
@@ -480,5 +503,13 @@ export class RepasModule {
   _reste(el, v, suffixe){
     el.textContent = v>0 ? `reste ${v}${suffixe}` : (v<0 ? `+${-v}${suffixe} au-dessus` : 'atteint ✓');
     el.className = 'cible-reste mono' + (v<0 ? ' depasse' : v===0 ? ' atteint' : '');
+  }
+
+  /* une mini-stat macro de la carte cible : libellé + consommé / cible (g), coloré sur l'écart */
+  _macroMini(lib, conso, cible){
+    const c = Math.round(conso), cb = Math.round(cible);
+    const etat = cb && c>cb ? ' depasse' : (cb && c>=cb ? ' atteint' : '');
+    return `<span class="macro-mini${etat}"><span class="macro-lib">${lib}</span>`
+         + `<span class="macro-val">${c} / ${cb} g</span></span>`;
   }
 }

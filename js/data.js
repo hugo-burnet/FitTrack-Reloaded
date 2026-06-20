@@ -3,19 +3,21 @@
 export const CLE = 'carnet-recompo-v1';
 export const OBJ_DEFAUT = 2545; /* référence du plan de la bible nutrition */
 
-/* Valeurs nutritionnelles approximatives (par 100 g, sauf 'unite'). Les bases de données varient de ±10 %. */
+/* Valeurs nutritionnelles approximatives (par 100 g, sauf 'unite'). Les bases de données varient de ±10 %.
+   Macros complètes (E3) : prot/gluc/lip + fibres. Pour les aliments « unité » (whey/banane/choco),
+   les valeurs ...U sont par unité ; pour les autres, les valeurs ...100 sont par 100 g. */
 export const ALIMENTS = {
-  avoine:  {nom:"Flocons d'avoine",            kcal100:380, prot100:13,  flex:true},
-  riz:     {nom:"Riz (cru)",                   kcal100:350, prot100:7,   flex:true},
-  poulet:  {nom:"Haut de cuisse poulet (cru)", kcal100:130, prot100:19},
-  skyr:    {nom:"Skyr nature",                 kcal100:63,  prot100:11},
-  pb:      {nom:"Beurre de cacahuète",         kcal100:600, prot100:25},
-  pois:    {nom:"Petits pois-carottes",        kcal100:60,  prot100:3.5},
-  amandes: {nom:"Amandes",                     kcal100:600, prot100:21},
-  noix:    {nom:"Noix",                         kcal100:650, prot100:15},
-  whey:    {nom:"Whey",      unite:"shaker",   kcalU:115,   protU:23},
-  banane:  {nom:"Banane",    unite:"",          kcalU:105,   protU:1.3},
-  choco:   {nom:"Chocolat noir 85%", unite:"carré", kcalU:30, protU:0.5},
+  avoine:  {nom:"Flocons d'avoine",            kcal100:380, prot100:13,  gluc100:60, lip100:7,  fib100:10,  flex:true},
+  riz:     {nom:"Riz (cru)",                   kcal100:350, prot100:7,   gluc100:78, lip100:1,  fib100:1.3, flex:true},
+  poulet:  {nom:"Haut de cuisse poulet (cru)", kcal100:130, prot100:19,  gluc100:0,  lip100:6,  fib100:0},
+  skyr:    {nom:"Skyr nature",                 kcal100:63,  prot100:11,  gluc100:4,  lip100:0.2,fib100:0},
+  pb:      {nom:"Beurre de cacahuète",         kcal100:600, prot100:25,  gluc100:12, lip100:50, fib100:6},
+  pois:    {nom:"Petits pois-carottes",        kcal100:60,  prot100:3.5, gluc100:8,  lip100:0.5,fib100:4},
+  amandes: {nom:"Amandes",                     kcal100:600, prot100:21,  gluc100:10, lip100:50, fib100:12},
+  noix:    {nom:"Noix",                         kcal100:650, prot100:15,  gluc100:14, lip100:65, fib100:7},
+  whey:    {nom:"Whey",      unite:"shaker",   kcalU:115,   protU:23,    glucU:3,    lipU:1.5,  fibU:0},
+  banane:  {nom:"Banane",    unite:"",          kcalU:105,   protU:1.3,   glucU:27,   lipU:0.4,  fibU:3},
+  choco:   {nom:"Chocolat noir 85%", unite:"carré", kcalU:30, protU:0.5,  glucU:1.5,  lipU:2.5,  fibU:0.6},
 };
 
 export const PLAN = [

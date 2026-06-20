@@ -605,6 +605,14 @@ input:-webkit-autofill:focus{
 .cible-chiffre{font-size:13px;color:var(--craie-2);font-variant-numeric:tabular-nums}
 /* protéines : jauge verte (statut de progression) */
 .prog-rempli.prot{background:var(--ok)}
+/* répartition macros complètes (E3) : glucides / lipides / fibres */
+.cible-macros{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:14px;padding-top:12px;
+  border-top:1px solid var(--trait)}
+.macro-mini{display:flex;flex-direction:column;gap:2px;flex:1 1 0;min-width:84px}
+.macro-mini .macro-lib{font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--craie-3)}
+.macro-mini .macro-val{font-size:14px;font-weight:600;color:var(--craie-2);font-variant-numeric:tabular-nums}
+.macro-mini.depasse .macro-val{color:var(--alerte)}
+.macro-mini.atteint .macro-val{color:var(--ok)}
 .cible-pied{margin-top:12px;padding-top:10px;border-top:1px solid var(--trait);
   font-size:13px;color:var(--craie-2);text-align:center;font-variant-numeric:tabular-nums}
 

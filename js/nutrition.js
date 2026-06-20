@@ -9,6 +9,11 @@ export const FLEX_MIN = 0.4, FLEX_MAX = 1.8;
 
 export function kcalItem(cle, q){ const a=ALIMENTS[cle]; return a.unite!==undefined ? a.kcalU*q : a.kcal100*q/100; }
 export function protItem(cle, q){ const a=ALIMENTS[cle]; return a.unite!==undefined ? a.protU*q : a.prot100*q/100; }
+/* macros complètes (E3) : glucides / lipides / fibres, même logique unité vs 100 g.
+   Tolère un aliment sans la donnée (legacy) → 0, jamais NaN. */
+export function glucItem(cle, q){ const a=ALIMENTS[cle]; return a.unite!==undefined ? (a.glucU||0)*q : (a.gluc100||0)*q/100; }
+export function lipItem(cle, q){  const a=ALIMENTS[cle]; return a.unite!==undefined ? (a.lipU ||0)*q : (a.lip100 ||0)*q/100; }
+export function fibItem(cle, q){  const a=ALIMENTS[cle]; return a.unite!==undefined ? (a.fibU ||0)*q : (a.fib100 ||0)*q/100; }
 
 /* Toutes les fonctions ci-dessous prennent le plan en paramètre (défaut = PLAN, le plan
    de référence) : à l'exécution on leur passe le plan éditable de l'utilisateur (etat.plan).
@@ -41,6 +46,22 @@ export function protCible(objectifKcal, plan = PLAN){
     p += protItem(cle, qte);
   }));
   return Math.round(p);
+}
+
+/* macros cibles du jour = ce que délivre le plan (flex ajusté à l'objectif).
+   Renvoie {prot, gluc, lip, fib} en grammes arrondis. Même règle d'arrondi de
+   quantité (flex → multiple de 5 g) que protCible/qteAjustee, pour cohérence d'affichage. */
+export function macrosCible(objectifKcal, plan = PLAN){
+  const f = facteurFlex(objectifKcal, plan);
+  let prot=0, gluc=0, lip=0, fib=0;
+  plan.forEach(r=>r.items.forEach(([cle,q])=>{
+    const qte = ALIMENTS[cle].flex ? Math.round(q*f/5)*5 : q;
+    prot += protItem(cle, qte);
+    gluc += glucItem(cle, qte);
+    lip  += lipItem(cle, qte);
+    fib  += fibItem(cle, qte);
+  }));
+  return { prot:Math.round(prot), gluc:Math.round(gluc), lip:Math.round(lip), fib:Math.round(fib) };
 }
 
 /* consommation quotidienne par aliment, dérivée du plan (flex ajusté à l'objectif).

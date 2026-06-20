@@ -35,10 +35,13 @@ Découpée en sous-lots livrables indépendamment, chacun testé et committé. O
 - [x] `sw.js` v16. Validé sur démo : 72,5 kg / 178 / 30 ans / 5 séances → TDEE 2920 ; sèche 2336 / recompo 2920 / masse 3212.
 - ⚠ Collision « taille » levée : `profil.stature` (cm) ≠ tour de taille des mensurations.
 
-### V3.2 — Macros complètes (E3)
-- Modèle aliment étendu : `glucides/lipides/fibres` (par 100 g et par unité). Migration des aliments existants.
-- `nutrition.js` calcule les 4 macros ; `journalRepas` les stocke ; affichage de la répartition P/G/L.
-- Flex généralisé & optionnel (aliments « ajustables » librement).
+### V3.2 — Macros complètes (E3) ✅ FAIT
+- [x] Modèle aliment étendu (`data.js : ALIMENTS`) : `gluc/lip/fib` par 100 g (`gluc100/lip100/fib100`) et par unité (`glucU/lipU/fibU`) pour les 11 aliments. Valeurs cohérentes (test : kcal ≈ 4·prot + 4·gluc + 9·lip ±15 %).
+- [x] `nutrition.js` : fonctions pures `glucItem/lipItem/fibItem` (legacy → 0, jamais NaN) + `macrosCible(objectifKcal, plan)` → `{prot, gluc, lip, fib}` (flex ajusté, même arrondi 5 g que `qteAjustee`).
+- [x] `RepasModule` : `repasGluc/Lip/Fib`, `cibles()` renvoie les 4 macros ; `journaliserRepas` + `ajouterExtra(Aliment)` stockent `gluc/lip/fib` ; `consomme()` agrège les 4 (anciennes entrées V3.1− comptées 0, sans casser). Hors-plan libre (kcal/prot saisis à la main) : G/L/fib inconnus → 0.
+- [x] UI : carte cible affiche la répartition **Glucides / Lipides / Fibres** (consommé / cible, coloré sur l'écart : rouge si dépassé, vert si atteint). `#cible-macros` + CSS `.cible-macros`/`.macro-mini`.
+- [x] **4 nouveaux tests** purs (`tests/nutrition.test.js`, total 150 verts). `sw.js` v17 (data.js/nutrition.js déjà précachés).
+- ⏸ Flex généralisé optionnel (marquer librement des aliments « ajustables ») : reporté — non bloquant, à traiter avec l'éditeur d'aliments (V3.3).
 
 ### V3.3 — Base d'aliments enrichie + perso (E2)
 - Base curée ~250-400 aliments catégorisés (`data/aliments-base`).
