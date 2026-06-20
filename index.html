@@ -117,6 +117,35 @@
       <p class="note">Protéines et lipides restent fixés à leurs cibles : seuls le riz et l'avoine s'ajustent, comme le dit ton onglet Verdict. <b>Quand le verdict te dit ±150 kcal, change ce nombre ici.</b></p>
     </div>
 
+    <!-- Calculateur de besoins (E5) : profil + objectif → cible kcal/macros personnalisée -->
+    <div class="carte" id="carte-besoins">
+      <div class="besoins-tete">
+        <h2>Calculateur de besoins</h2>
+        <button class="btn btn-2 besoins-toggle" id="btn-besoins-toggle" type="button" aria-expanded="false">Calculer mes besoins</button>
+      </div>
+      <div id="besoins-form" class="cache">
+        <div class="ligne-3">
+          <div>
+            <label for="bes-sexe">Sexe</label>
+            <select id="bes-sexe"><option value="">—</option><option value="homme">Homme</option><option value="femme">Femme</option></select>
+          </div>
+          <div><label for="bes-age">Âge</label><input type="number" id="bes-age" inputmode="numeric" min="14" max="100" placeholder="ex. 30"></div>
+          <div><label for="bes-stature">Taille (cm)</label><input type="number" id="bes-stature" inputmode="numeric" min="120" max="230" placeholder="ex. 180"></div>
+        </div>
+        <div class="champ">
+          <label>Objectif</label>
+          <div class="chips" id="bes-objectif">
+            <button type="button" class="chip" data-obj="seche">Sèche</button>
+            <button type="button" class="chip" data-obj="recompo">Recompo</button>
+            <button type="button" class="chip" data-obj="masse">Prise de masse</button>
+          </div>
+        </div>
+        <div class="besoins-resultat" id="bes-resultat"></div>
+        <button class="btn" id="btn-besoins-appliquer" type="button">Appliquer comme objectif</button>
+        <p class="note">Le poids et l'activité (séances/sem) sont déduits automatiquement de tes données. La cible reste ajustable à la main ci-dessus.</p>
+      </div>
+    </div>
+
     <!-- Cible explicite du jour + écart en temps réel (kcal ET protéines) -->
     <div class="carte progression" id="carte-cible">
       <div class="cible-grille">

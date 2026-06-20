@@ -12,11 +12,16 @@
    l'app. Les évolutions v3+ (profil, macros complètes, multi-menus, charge de
    séance…) s'ajouteront ici, chacune testée isolément. */
 
-export const SCHEMA_ACTUEL = 1;
+export const SCHEMA_ACTUEL = 2;
 
 export const MIGRATIONS = [
-  /* exemple de forme à venir :
-     { de:1, vers:2, appliquer(etat){ etat.profil = etat.profil || {}; } }, */
+  /* v1 → v2 : profil utilisateur + objectif explicite (E5). Le calculateur de
+     besoins (besoins.js) les consomme ; le Verdict les consommera ensuite
+     (multi-objectif). Valeurs neutres par défaut, à renseigner via l'UI. */
+  { de:1, vers:2, appliquer(etat){
+      if(!etat.profil || typeof etat.profil !== 'object') etat.profil = { sexe:null, age:null, stature:null };
+      if(!etat.objectif || typeof etat.objectif !== 'object') etat.objectif = { type:'recompo' };
+  } },
 ];
 
 /* Applique les migrations dont `de` correspond à la version courante, en chaîne,

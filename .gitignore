@@ -4,6 +4,9 @@
 # Code de référence de l'ancienne version (FitTrack) — conservé en local, hors dépôt
 _Archives/
 
+# Prompt de reprise de session (local, perso — ne pas versionner)
+REPRISE.md
+
 # Dépendances (le projet n'en a aucune — vanilla — mais au cas où)
 node_modules/
 

@@ -22,6 +22,11 @@ export function etatParDefaut(){
     schema: SCHEMA_ACTUEL,
     poids: [],
     mensurations: [],
+    /* profil corporel (E5) — `stature` = taille en cm (à NE PAS confondre avec le
+       tour de taille des mensurations). Renseigné via le calculateur de besoins. */
+    profil: { sexe: null, age: null, stature: null },
+    /* objectif explicite : pilote le calculateur de besoins et (à venir) le Verdict */
+    objectif: { type: 'recompo' },
     objectifKcal: OBJ_DEFAUT,
     repas: { jour: jourLocal(), coches: {}, planJour: null },
     plan: cloneProfond(PLAN),

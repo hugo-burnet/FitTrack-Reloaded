@@ -74,6 +74,8 @@ export class Store extends EventTarget {
     if(typeof etat.schema !== 'number') etat.schema = def.schema;
     if(!Array.isArray(etat.poids)) etat.poids = def.poids;
     if(!Array.isArray(etat.mensurations)) etat.mensurations = def.mensurations;
+    if(!etat.profil || typeof etat.profil !== 'object') etat.profil = def.profil;
+    if(!etat.objectif || typeof etat.objectif !== 'object') etat.objectif = def.objectif;
     if(typeof etat.objectifKcal !== 'number') etat.objectifKcal = def.objectifKcal;
     if(!etat.repas || typeof etat.repas !== 'object') etat.repas = def.repas;
     if(!etat.repas.coches) etat.repas.coches = {};
