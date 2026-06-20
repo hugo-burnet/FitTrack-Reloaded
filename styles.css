@@ -148,6 +148,10 @@ td.n{font-variant-numeric:tabular-nums}
 .graph-box{position:relative;height:240px;margin-top:8px}
 
 /* ---------- cartes-scénarios (arbre de décision) ---------- */
+/* badge de l'objectif courant à côté du titre « L'arbre de décision » (V3.5) */
+.verdict-obj-badge{font-size:12px;font-weight:600;letter-spacing:.04em;
+  color:var(--accent-soft);background:var(--plaque-2);border:1px solid var(--trait);
+  border-radius:999px;padding:4px 12px;white-space:nowrap}
 .scenarios{list-style:none;display:flex;flex-direction:column;gap:10px}
 .sc{
   background:var(--plaque-2);border-left:3px solid var(--trait);

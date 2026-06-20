@@ -43,6 +43,53 @@ test('verdict : zone grise pour les cas ambigus (ex. perte douce, taille stable)
   assert.equal(d({ rythme:-0.3, dTaille:0 }).t, 'Zone grise — Observe');
 });
 
+/* ---- V3.5 : arbre paramétré par l'objectif ---- */
+
+test('verdict recompo : objectif par défaut + objectif inconnu → arbre recompo', () => {
+  // défaut implicite
+  assert.equal(d({ rythme:0.2, dTaille:-0.2 }).cls, 'v-ok');
+  // objectif inconnu retombe sur recompo (mêmes seuils)
+  assert.equal(d({ rythme:0.2, dTaille:-0.2, objectif:'xxx' }).t, 'RAS — Continue');
+});
+
+test('verdict sèche : perte modérée + taille stable/↓ = RAS', () => {
+  assert.match(d({ objectif:'seche', rythme:-0.5, dTaille:0 }).t, /Sèche sur les rails/);
+  assert.equal(d({ objectif:'seche', rythme:-0.5, dTaille:0 }).cls, 'v-ok');
+});
+
+test('verdict sèche : perte trop rapide (< −1 kg/mois) → +150 kcal', () => {
+  const r = d({ objectif:'seche', rythme:-1.5, dTaille:-1 });
+  assert.equal(r.cls, 'v-hausse');
+  assert.match(r.t, /perte trop rapide/);
+});
+
+test('verdict sèche : perte qui cale et taille pas ↓ → −150 (creuser)', () => {
+  const r = d({ objectif:'seche', rythme:0, dTaille:0 });
+  assert.equal(r.cls, 'v-baisse');
+  assert.match(r.t, /creuser le déficit/);
+});
+
+test('verdict sèche : balance stable mais taille ↓ = le gras part (RAS)', () => {
+  assert.match(d({ objectif:'seche', rythme:0, dTaille:-1 }).t, /le gras part/);
+});
+
+test('verdict masse : prise lente + taille stable = RAS', () => {
+  assert.match(d({ objectif:'masse', rythme:0.4, dTaille:0 }).t, /Prise propre/);
+  assert.equal(d({ objectif:'masse', rythme:0.4, dTaille:0 }).cls, 'v-ok');
+});
+
+test('verdict masse : prise trop grasse (poids ↑ vite + taille ↑) → −150', () => {
+  const r = d({ objectif:'masse', rythme:1.0, dTaille:1 });
+  assert.equal(r.cls, 'v-baisse');
+  assert.match(r.t, /trop grasse/);
+});
+
+test('verdict masse : prise trop lente (poids n\'avance pas) → +150', () => {
+  const r = d({ objectif:'masse', rythme:0, dTaille:0 });
+  assert.equal(r.cls, 'v-hausse');
+  assert.match(r.t, /prise trop lente/);
+});
+
 test('brasStagne : faux sous 3 relevés, vrai si 2 derniers deltas ≤ 0', () => {
   assert.equal(brasStagne([{ bras:32 }, { bras:32.2 }]), false);
   assert.equal(brasStagne([{ bras:32 }, { bras:32.2 }, { bras:32.4 }]), false);   // progresse
