@@ -176,13 +176,16 @@
 
 ## 4. Roadmap
 
-### V2 — Stabilisation
+### V2 — Stabilisation ✅ LIVRÉE (2026-06-20)
 *But : base saine, zéro régression, prêt à évoluer.*
-- T1 + `defaultState()` unique.
-- Tests `fusion.js` / `sanitize.js`.
-- Versionnement de schéma + cadre de migrations.
-- Undo sur suppressions ; corrections rapides M1/M3.
-*Sortie : aucune nouvelle fonctionnalité visible, mais socle fiable et migrable.*
+- [x] **T1 + fabrique `etatParDefaut()` unique** (`js/defaults.js`), partagée par `Store.charger()`/`_appliquerDefauts` et `Store.reinitialiser()`.
+- [x] **Tests `fusion.js` / `sanitize.js`** (+ `defaults`, `migrations`) — **114 → 138 tests, tous verts**.
+- [x] **Versionnement de schéma + cadre de migrations** (`js/migrations.js`, `SCHEMA_ACTUEL=1`), appelé au chargement et après import.
+- [x] **Undo non bloquant** (`toastUndo`) sur suppression pesée/mensuration/séance.
+- [x] **M1** (commentaire `moyennesHebdo`) ; **sw.js v15** (précache des nouveaux modules).
+- [ ] ~~M3~~ **différé** (`brasStagne` en deltas datés : change un comportement métier testé → hors stabilisation).
+*Sortie : socle fiable et migrable. `fusion.js` non modifié (seulement testé) → contrainte synchro respectée.*
+*Voir le détail dans `audit/journal-implementation.md`.*
 
 ### V3 — Modularisation
 *But : architecture cible + fondations nutrition & profil.*
