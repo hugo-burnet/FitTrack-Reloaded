@@ -43,10 +43,10 @@ Découpée en sous-lots livrables indépendamment, chacun testé et committé. O
 - [x] **4 nouveaux tests** purs (`tests/nutrition.test.js`, total 150 verts). `sw.js` v17 (data.js/nutrition.js déjà précachés).
 - ⏸ Flex généralisé optionnel (marquer librement des aliments « ajustables ») : reporté — non bloquant, à traiter avec l'éditeur d'aliments (V3.3).
 
-### V3.3 — Base d'aliments enrichie + perso (E2) 🚧 EN COURS
-- [x] **V3.3a** — Base curée embarquée `js/data/aliments-base.js` (**167 aliments** catégorisés, 13 catégories ; clés du PLAN/COURSES figées, valeurs d'origine conservées). kcal dérivées par Atwater (4·prot+4·gluc+9·lip) → cohérence interne garantie. `js/catalogue.js` (pur) : `catalogue(perso)` fusionne base+perso (perso écrase), `tousAliments`/`categoriesPresentes`/`rechercher` (accent-insensible, filtre catégorie). `data.js : ALIMENTS = ALIMENTS_BASE`. Item-fns de `nutrition.js` reçoivent un `aliments` injectable (défaut base). **+8 tests** (`tests/catalogue.test.js`), 158 verts. `sw.js` v18 (+ 2 fichiers précachés).
-- [ ] **V3.3b** — État `aliments.perso` (migration schéma 2→3), éditeur d'aliments perso, picker hors-plan avec recherche + filtre catégorie.
-- ⚠ Limite connue : `fusion.js` (gelé) ne fusionne pas le champ `aliments` → les définitions perso ne se synchronisent pas entre appareils (les entrées de journal stockent déjà leurs macros → intactes). Extension `fusion.js` à valider.
+### V3.3 — Base d'aliments enrichie + perso (E2) ✅ FAIT
+- [x] **V3.3a** — Base curée embarquée `js/data/aliments-base.js` (**167 aliments** catégorisés, 13 catégories ; clés du PLAN/COURSES figées, valeurs d'origine conservées). kcal dérivées par Atwater (4·prot+4·gluc+9·lip) → cohérence interne garantie. `js/catalogue.js` (pur) : `catalogue(perso)` fusionne base+perso (perso écrase), `tousAliments`/`categoriesPresentes`/`rechercher` (accent-insensible, filtre catégorie). `data.js : ALIMENTS = ALIMENTS_BASE`. Item-fns de `nutrition.js` reçoivent un `aliments` injectable (défaut base). **+8 tests** (`tests/catalogue.test.js`). `sw.js` v18 (+ 2 fichiers précachés).
+- [x] **V3.3b** — État `aliments.perso` (**migration schéma 2→3**, defaults + `Store._appliquerDefauts` + `assainirAlimentsPerso`). Éditeur d'aliments perso (carte « Mes aliments » : ajout/édition/suppression, kcal saisies ou dérivées Atwater). Picker hors-plan repensé : **recherche** (accent-insensible) + **filtre par catégorie**, aliments perso marqués ★ et calculés via le catalogue fusionné. **+4 tests** (migration v2→v3, `assainirAlimentsPerso`). 162 tests verts. `sw.js` v19.
+- ⚠ Limite connue : `fusion.js` (gelé) ne fusionne pas le champ `aliments` → les définitions perso ne se synchronisent pas entre appareils (les entrées de journal stockent déjà leurs macros → intactes). Extension `fusion.js` à valider avant V3.4.
 
 ### V3.4 — Multi-menus (E1) + Plats composés (E4)
 - `plansAlim[]` + `planAlimActif` (modèle Muscu) + éditeur de menu.

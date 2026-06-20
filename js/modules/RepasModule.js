@@ -1,5 +1,7 @@
-import { $, echap, cloneProfond, aujourdHui } from '../utils.js';
+import { $, echap, cloneProfond, aujourdHui, slug } from '../utils.js';
 import { ALIMENTS } from '../data.js';
+import { ORDRE_CATEGORIES } from '../data/aliments-base.js';
+import { catalogue, rechercher, categoriesPresentes } from '../catalogue.js';
 import { kcalItem, protItem, glucItem, lipItem, fibItem, facteurFlex, flexSature, protCible, macrosCible } from '../nutrition.js';
 import { moyennesHebdo } from '../stats.js';
 import { calculerBesoins, frequenceHebdo, OBJECTIFS } from '../besoins.js';
@@ -19,24 +21,28 @@ export class RepasModule {
     this.porteeDepl = 'plan';       /* 'plan' (permanent) | 'jour' (aujourd'hui seulement) */
     this.deplItem = null;           /* "idRepas:cle" de l'aliment dont le sélecteur de cible est ouvert */
     this.besoinsOuvert = false;     /* calculateur de besoins (E5) déplié ? */
+    this.persoOuvert = false;       /* éditeur d'aliments perso (E2) déplié ? */
+    this.persoEdit = null;          /* clé de l'aliment perso en cours d'édition (sinon création) */
     this.bind();
   }
 
   get etat(){ return this.store.etat; }
 
+  /* ---- aliments perso (E2) ---- */
+  perso(){ return (this.etat.aliments && this.etat.aliments.perso) || {}; }
+  /* catalogue fusionné base + perso : sert au picker et aux calculs des extras */
+  cat(){ return catalogue(this.perso()); }
+
   /* plan effectif : surcharge du jour si elle existe, sinon le plan permanent */
   plan(){ return this.etat.repas.planJour || this.etat.plan; }
 
   bind(){
-    /* options du sélecteur d'aliment hors-plan (une fois) */
-    const sel = $('extra-aliment');
-    Object.keys(ALIMENTS).forEach(cle=>{
-      const a = ALIMENTS[cle];
-      const dens = a.unite!==undefined ? `${a.protU} g prot/${a.unite||'u'}` : `${a.prot100} g prot/100 g`;
-      const o = document.createElement('option');
-      o.value = cle; o.textContent = `${a.nom} — ${dens}`;
-      sel.appendChild(o);
-    });
+    /* picker hors-plan : filtre catégories + liste d'aliments (base + perso), peuplés dynamiquement */
+    this.remplirFiltreCategories();
+    this.remplirPickerAliments();
+    /* catégories de l'éditeur perso (liste fixe ORDRE_CATEGORIES) */
+    const selCat = $('perso-cat');
+    if(selCat) selCat.innerHTML = ORDRE_CATEGORIES.map(c=>`<option value="${echap(c)}">${echap(c)}</option>`).join('');
 
     const root = $('ong-repas');
     root.addEventListener('click', e => {
@@ -57,6 +63,14 @@ export class RepasModule {
       if(supprX){ this.supprimerExtra(supprX.dataset.id); return; }
       if(e.target.closest('#btn-extra-toggle')){ this.basculerFormExtra(); return; }
       if(e.target.closest('#btn-extra-add')){ this.ajouterDepuisForm(); return; }
+      /* éditeur d'aliments perso (E2) */
+      if(e.target.closest('#btn-perso-toggle')){ this.basculerPerso(); return; }
+      if(e.target.closest('#btn-perso-save')){ this.sauverPerso(); return; }
+      if(e.target.closest('#btn-perso-annuler')){ this.annulerEditPerso(); return; }
+      const pEdit = e.target.closest('[data-action="perso-editer"]');
+      if(pEdit){ this.editerPerso(pEdit.dataset.cle); return; }
+      const pSup = e.target.closest('[data-action="perso-suppr"]');
+      if(pSup){ this.supprimerPerso(pSup.dataset.cle); return; }
       /* calculateur de besoins (E5) */
       if(e.target.closest('#btn-besoins-toggle')){ this.basculerBesoins(); return; }
       const objChip = e.target.closest('#bes-objectif [data-obj]');
@@ -71,9 +85,11 @@ export class RepasModule {
     });
     root.addEventListener('change', e => {
       if(e.target.id==='extra-aliment') this.majModeExtra();
+      if(e.target.id==='extra-cat') this.remplirPickerAliments();
       if(e.target.id==='bes-sexe' || e.target.id==='bes-age' || e.target.id==='bes-stature') this.majProfilDepuisChamps();
     });
     root.addEventListener('input', e => {
+      if(e.target.id==='extra-recherche') this.remplirPickerAliments();
       if(e.target.id==='extra-qte' || e.target.id==='extra-kcal' || e.target.id==='extra-prot') this.majApercuExtra();
       if(e.target.id==='bes-age' || e.target.id==='bes-stature') this.renderBesoinsResultat();   /* aperçu live */
     });
@@ -153,11 +169,12 @@ export class RepasModule {
     this.store.sauver(); this.render();
   }
   ajouterExtraAliment(cle, qte){
-    const a = ALIMENTS[cle]; if(!a || !(qte>0)) return;
+    const cat = this.cat();
+    const a = cat[cle]; if(!a || !(qte>0)) return;
     const unite = a.unite!==undefined ? (a.unite||'unité') : 'g';
     this.ajouterExtra({ cle, nom:a.nom, qte, unite,
-      kcal:kcalItem(cle,qte), prot:protItem(cle,qte),
-      gluc:glucItem(cle,qte), lip:lipItem(cle,qte), fib:fibItem(cle,qte) });
+      kcal:kcalItem(cle,qte,cat), prot:protItem(cle,qte,cat),
+      gluc:glucItem(cle,qte,cat), lip:lipItem(cle,qte,cat), fib:fibItem(cle,qte,cat) });
   }
   supprimerExtra(id){
     const jour = this.etat.repas.jour;
@@ -205,7 +222,7 @@ export class RepasModule {
   }
   majModeExtra(){
     const cle = $('extra-aliment').value;
-    const a = cle ? ALIMENTS[cle] : null;
+    const a = cle ? this.cat()[cle] : null;
     $('extra-aliment-q').classList.toggle('cache', !cle);
     $('extra-libre').classList.toggle('cache', !!cle);
     if(a) $('extra-unite').textContent = a.unite!==undefined ? (a.unite||'unité') : 'g';
@@ -216,12 +233,36 @@ export class RepasModule {
     let kcal=0, prot=0, ok=false;
     if(cle){
       const qte = parseFloat($('extra-qte').value);
-      if(qte>0){ kcal=kcalItem(cle,qte); prot=protItem(cle,qte); ok=true; }
+      if(qte>0){ const cat=this.cat(); kcal=kcalItem(cle,qte,cat); prot=protItem(cle,qte,cat); ok=true; }
     } else {
       const k=parseFloat($('extra-kcal').value), p=parseFloat($('extra-prot').value);
       kcal=k||0; prot=p||0; ok=(k>0||p>0);
     }
     $('extra-apercu').textContent = ok ? `≈ ${Math.round(kcal)} kcal · ${Math.round(prot)} g protéines` : '';
+  }
+
+  /* ---- picker hors-plan : recherche + filtre catégorie (base curée + perso, E2) ---- */
+  remplirFiltreCategories(){
+    const sel = $('extra-cat'); if(!sel) return;
+    const courant = sel.value;
+    sel.innerHTML = '<option value="">Toutes</option>'
+      + categoriesPresentes(this.perso()).map(c=>`<option value="${echap(c)}">${echap(c)}</option>`).join('');
+    if(courant) sel.value = courant;
+  }
+  remplirPickerAliments(){
+    const sel = $('extra-aliment'); if(!sel) return;
+    const terme = ($('extra-recherche') && $('extra-recherche').value) || '';
+    const cat = ($('extra-cat') && $('extra-cat').value) || '';
+    const courant = sel.value;
+    const liste = rechercher({ terme, cat }, this.perso());
+    sel.innerHTML = '<option value="">— Saisie libre (resto, plat composé…) —</option>'
+      + liste.map(a=>{
+          const dens = a.unite!==undefined ? `${a.protU} g prot/${a.unite||'u'}` : `${a.prot100} g prot/100 g`;
+          return `<option value="${echap(a.cle)}">${echap(a.nom)}${a.perso?' ★':''} — ${dens}</option>`;
+        }).join('');
+    /* conserve la sélection courante si toujours présente, sinon retombe en saisie libre */
+    sel.value = (courant && liste.some(a=>a.cle===courant)) ? courant : '';
+    this.majModeExtra();
   }
 
   /* ---- objectif kcal ---- */
@@ -233,6 +274,95 @@ export class RepasModule {
   ajusterObjectif(delta){
     this.etat.objectifKcal = Math.max(1600, Math.min(4000, this.etat.objectifKcal + delta));
     this.store.sauver(); this.render();
+  }
+
+  /* ================= ÉDITEUR D'ALIMENTS PERSO (E2) =================
+     Complète la base curée. Stocké dans etat.aliments.perso = {cle: {nom, cat, macros/100g}}.
+     Disponible aussitôt dans le picker hors-plan. kcal saisies ou dérivées par Atwater. */
+  basculerPerso(){
+    this.persoOuvert = !this.persoOuvert;
+    $('perso-form').classList.toggle('cache', !this.persoOuvert);
+    $('btn-perso-toggle').setAttribute('aria-expanded', String(this.persoOuvert));
+    $('btn-perso-toggle').textContent = this.persoOuvert ? '✕ Fermer' : 'Gérer mes aliments';
+    if(this.persoOuvert) this.renderPerso();
+  }
+
+  /* lit le formulaire perso ; kcal vide → dérivée Atwater (4·prot + 4·gluc + 9·lip) */
+  _lirePersoForm(){
+    const nb = id => { const v = parseFloat($(id).value); return Number.isFinite(v) && v>=0 ? v : 0; };
+    const nom = ($('perso-nom').value||'').trim();
+    const cat = $('perso-cat').value || 'Compléments';
+    const prot=nb('perso-prot'), gluc=nb('perso-gluc'), lip=nb('perso-lip'), fib=nb('perso-fib');
+    const kcalSaisi = parseFloat($('perso-kcal').value);
+    const kcal100 = Number.isFinite(kcalSaisi) && kcalSaisi>=0 ? kcalSaisi : Math.round(4*prot + 4*gluc + 9*lip);
+    return { nom, cat, kcal100, prot100:prot, gluc100:gluc, lip100:lip, fib100:fib };
+  }
+  sauverPerso(){
+    const d = this._lirePersoForm();
+    if(!d.nom){ $('perso-nom').focus(); toast('Donne un nom à ton aliment.', 'erreur'); return; }
+    const perso = this.etat.aliments.perso;
+    /* édition : on garde la clé ; création : clé dérivée du nom, dé-collisionnée */
+    let cle = this.persoEdit;
+    if(!cle){
+      const base = slug(d.nom); cle = base; let n = 2;
+      while(perso[cle] || ALIMENTS[cle]) cle = `${base}-${n++}`;
+    }
+    perso[cle] = d;
+    this.persoEdit = null;
+    this.store.sauver();
+    this._resetPersoForm();
+    this.remplirFiltreCategories();
+    this.remplirPickerAliments();
+    this.renderPerso();
+    toast('Aliment enregistré.', 'ok');
+  }
+  editerPerso(cle){
+    const a = this.perso()[cle]; if(!a) return;
+    this.persoEdit = cle;
+    if(!this.persoOuvert) this.basculerPerso();
+    $('perso-nom').value = a.nom || '';
+    $('perso-cat').value = a.cat || 'Compléments';
+    $('perso-kcal').value = a.kcal100 ?? '';
+    $('perso-prot').value = a.prot100 ?? '';
+    $('perso-gluc').value = a.gluc100 ?? '';
+    $('perso-lip').value = a.lip100 ?? '';
+    $('perso-fib').value = a.fib100 ?? '';
+    $('btn-perso-save').textContent = 'Enregistrer les modifications';
+    $('btn-perso-annuler').classList.remove('cache');
+    $('perso-nom').focus();
+  }
+  annulerEditPerso(){ this.persoEdit = null; this._resetPersoForm(); }
+  _resetPersoForm(){
+    ['perso-nom','perso-kcal','perso-prot','perso-gluc','perso-lip','perso-fib'].forEach(id=>{ const el=$(id); if(el) el.value=''; });
+    const sc=$('perso-cat'); if(sc) sc.selectedIndex=0;
+    $('btn-perso-save').textContent = 'Ajouter l\'aliment';
+    $('btn-perso-annuler').classList.add('cache');
+  }
+  supprimerPerso(cle){
+    if(!this.perso()[cle]) return;
+    delete this.etat.aliments.perso[cle];
+    if(this.persoEdit===cle){ this.persoEdit=null; this._resetPersoForm(); }
+    this.store.sauver();
+    this.remplirFiltreCategories();
+    this.remplirPickerAliments();
+    this.renderPerso();
+  }
+  renderPerso(){
+    const el = $('perso-liste'); if(!el) return;
+    const perso = this.perso();
+    const cles = Object.keys(perso).sort((a,b)=>perso[a].nom.localeCompare(perso[b].nom));
+    if(!cles.length){ el.innerHTML = '<p class="note" style="margin:12px 0 0">Aucun aliment perso. Ajoute-en un ci-dessus — il apparaîtra aussitôt dans la recherche.</p>'; return; }
+    el.innerHTML = '<div class="perso-items">' + cles.map(cle=>{
+      const a = perso[cle];
+      return `<div class="perso-item">
+        <div class="perso-info"><span class="perso-nom">${echap(a.nom)}</span>
+          <span class="perso-macros mono">${Math.round(a.kcal100)} kcal · P ${a.prot100} · G ${a.gluc100} · L ${a.lip100} · F ${a.fib100} /100 g</span>
+          <span class="perso-cat">${echap(a.cat)}</span></div>
+        <div class="perso-btns">
+          <button type="button" class="chip-mini" data-action="perso-editer" data-cle="${echap(cle)}">Modifier</button>
+          <button type="button" class="repas-annuler" data-action="perso-suppr" data-cle="${echap(cle)}" aria-label="Supprimer">✕</button>
+        </div></div>`;
+    }).join('') + '</div>';
   }
 
   /* ================= CALCULATEUR DE BESOINS (E5) =================
@@ -339,6 +469,7 @@ export class RepasModule {
     const obj = $('obj-kcal');
     if(document.activeElement!==obj) obj.value = this.etat.objectifKcal;
     this.renderBesoins();   /* calculateur (E5) : rafraîchit l'aperçu si déplié */
+    if(this.persoOuvert) this.renderPerso();   /* éditeur d'aliments perso (E2) */
 
     /* avertissement de saturation du facteur flex (le plan ne peut plus s'ajuster) */
     const sat = flexSature(this.etat.objectifKcal, this.etat.plan);

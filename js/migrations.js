@@ -12,7 +12,7 @@
    l'app. Les évolutions v3+ (profil, macros complètes, multi-menus, charge de
    séance…) s'ajouteront ici, chacune testée isolément. */
 
-export const SCHEMA_ACTUEL = 2;
+export const SCHEMA_ACTUEL = 3;
 
 export const MIGRATIONS = [
   /* v1 → v2 : profil utilisateur + objectif explicite (E5). Le calculateur de
@@ -21,6 +21,12 @@ export const MIGRATIONS = [
   { de:1, vers:2, appliquer(etat){
       if(!etat.profil || typeof etat.profil !== 'object') etat.profil = { sexe:null, age:null, stature:null };
       if(!etat.objectif || typeof etat.objectif !== 'object') etat.objectif = { type:'recompo' };
+  } },
+  /* v2 → v3 : aliments perso (E2). L'éditeur d'aliments alimente `aliments.perso`
+     (dictionnaire {cle: {nom, cat, macros}}), fusionné à la base curée par catalogue.js. */
+  { de:2, vers:3, appliquer(etat){
+      if(!etat.aliments || typeof etat.aliments !== 'object') etat.aliments = { perso:{} };
+      if(!etat.aliments.perso || typeof etat.aliments.perso !== 'object') etat.aliments.perso = {};
   } },
 ];
 

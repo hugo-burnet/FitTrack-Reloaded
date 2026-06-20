@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   assainirEtat, assainirDates, serieValide, assainirSeance,
   assainirRepasPlan, assainirProgrammes, assainirJournalRepas, assainirCoursesItems,
+  assainirAlimentsPerso,
 } from '../js/sanitize.js';
 
 /* Garde-fou sur le code défensif le plus critique (jusqu'ici non testé) :
@@ -67,12 +68,31 @@ test('assainirCoursesItems : ne garde que les objets avec id', () => {
   assert.deepEqual(assainirCoursesItems([{id:'a'}, 2, null, {nom:'sans id'}]), [{id:'a'}]);
 });
 
+test('assainirAlimentsPerso : exige un nom, normalise macros et défaut de catégorie', () => {
+  const out = assainirAlimentsPerso({
+    bon:    { nom:' Mon shake ', cat:'Compléments', kcal100:120, prot100:25, gluc100:3, lip100:1, fib100:0 },
+    partiel:{ nom:'Sans macros' },                       /* macros absentes → 0, cat par défaut */
+    negatif:{ nom:'Négatif', prot100:-5, gluc100:'x' },  /* valeurs invalides → 0 */
+    sansnom:{ cat:'Fruits', kcal100:50 },                /* pas de nom → écarté */
+    vide:   { nom:'   ' },                               /* nom blanc → écarté */
+    pasobjet: 42,
+  });
+  assert.deepEqual(Object.keys(out).sort(), ['bon','negatif','partiel']);
+  assert.equal(out.bon.nom, 'Mon shake');               /* trim */
+  assert.deepEqual(out.partiel, { nom:'Sans macros', cat:'Compléments', kcal100:0, prot100:0, gluc100:0, lip100:0, fib100:0 });
+  assert.equal(out.negatif.prot100, 0);
+  assert.equal(out.negatif.gluc100, 0);
+  assert.deepEqual(assainirAlimentsPerso('nope'), {});
+  assert.deepEqual(assainirAlimentsPerso(null), {});
+});
+
 test('assainirEtat : ne lève jamais et purge en place', () => {
   const etat = { poids:[{date:'2026-01-01',kg:80},'bad'], seances:'oops',
-                 courses:{items:[{id:1},2]} };
+                 courses:{items:[{id:1},2]}, aliments:{perso:{x:{nom:'X',kcal100:10},y:{}}} };
   assert.doesNotThrow(() => assainirEtat(etat));
   assert.equal(etat.poids.length, 1);
   assert.deepEqual(etat.seances, []);
   assert.deepEqual(etat.courses.items, [{id:1}]);
+  assert.deepEqual(Object.keys(etat.aliments.perso), ['x']);   /* y (sans nom) écarté */
   assert.equal(assainirEtat(null), null);
 });

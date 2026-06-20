@@ -184,6 +184,12 @@
       <div id="extras-liste"></div>
       <button class="btn btn-2" id="btn-extra-toggle" type="button">+ Ajouter un aliment hors-plan</button>
       <div id="extra-form" class="cache">
+        <div class="ligne">
+          <div><label for="extra-recherche">Rechercher</label>
+            <input type="search" id="extra-recherche" placeholder="ex. poulet, banane…" autocomplete="off"></div>
+          <div><label for="extra-cat">Catégorie</label>
+            <select id="extra-cat"><option value="">Toutes</option></select></div>
+        </div>
         <div class="champ">
           <label for="extra-aliment">Aliment</label>
           <select id="extra-aliment">
@@ -205,6 +211,35 @@
         <button class="btn" id="btn-extra-add" type="button">Ajouter au journal du jour</button>
       </div>
       <p class="note">Ce qui est ajouté ici est journalisé <b>tel que mangé</b> et compte dans la cible & l'export — contrairement au plan, qui n'est qu'une suggestion.</p>
+    </div>
+
+    <!-- Éditeur d'aliments perso (E2) : complète la base curée, dispo dans le picker ci-dessus -->
+    <div class="carte" id="carte-perso">
+      <div class="besoins-tete">
+        <h2>Mes aliments</h2>
+        <button class="btn btn-2" id="btn-perso-toggle" type="button" aria-expanded="false">Gérer mes aliments</button>
+      </div>
+      <div id="perso-form" class="cache">
+        <div class="champ"><label for="perso-nom">Nom</label>
+          <input type="text" id="perso-nom" placeholder="ex. Mon granola maison"></div>
+        <div class="champ"><label for="perso-cat">Catégorie</label>
+          <select id="perso-cat"></select></div>
+        <p class="note" style="margin:2px 0 8px">Valeurs <b>pour 100 g</b>. Laisse les kcal vides pour les calculer depuis les macros.</p>
+        <div class="ligne-3">
+          <div><label for="perso-kcal">kcal</label><input type="number" id="perso-kcal" inputmode="numeric" min="0" placeholder="auto"></div>
+          <div><label for="perso-prot">Prot (g)</label><input type="number" id="perso-prot" inputmode="decimal" min="0" placeholder="0"></div>
+          <div><label for="perso-gluc">Gluc (g)</label><input type="number" id="perso-gluc" inputmode="decimal" min="0" placeholder="0"></div>
+        </div>
+        <div class="ligne">
+          <div><label for="perso-lip">Lipides (g)</label><input type="number" id="perso-lip" inputmode="decimal" min="0" placeholder="0"></div>
+          <div><label for="perso-fib">Fibres (g)</label><input type="number" id="perso-fib" inputmode="decimal" min="0" placeholder="0"></div>
+        </div>
+        <div class="perso-actions">
+          <button class="btn" id="btn-perso-save" type="button">Ajouter l'aliment</button>
+          <button class="btn btn-2 cache" id="btn-perso-annuler" type="button">Annuler l'édition</button>
+        </div>
+        <div id="perso-liste"></div>
+      </div>
     </div>
 
     <p class="note" style="text-align:center">Les repas se décochent seuls à minuit (les extras hors-plan aussi). Touche « Annuler » sur un repas pris pour revenir en arrière.</p>

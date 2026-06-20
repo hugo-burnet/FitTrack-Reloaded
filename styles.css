@@ -633,6 +633,19 @@ input:-webkit-autofill:focus{
 #extras-liste{margin-bottom:12px}
 #extra-form{margin-top:12px}
 
+/* ---------- Éditeur d'aliments perso (E2) ---------- */
+#perso-form{margin-top:12px}
+.perso-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+.perso-actions .btn{flex:1 1 auto}
+.perso-items{margin-top:14px;border-top:1px solid var(--trait)}
+.perso-item{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 0;border-bottom:1px solid var(--trait)}
+.perso-info{display:flex;flex-direction:column;gap:2px;min-width:0}
+.perso-nom{color:var(--craie);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.perso-macros{font-size:12px;color:var(--craie-2);font-variant-numeric:tabular-nums}
+.perso-cat{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--craie-3)}
+.perso-btns{display:flex;align-items:center;gap:8px;flex-shrink:0}
+
 /* ---------- Courses : quantités dérivées du plan (specs 4.3) ---------- */
 .courses-reglage{display:flex;align-items:center;gap:8px;margin-bottom:12px;
   font-size:13px;color:var(--craie-2);flex-wrap:wrap}

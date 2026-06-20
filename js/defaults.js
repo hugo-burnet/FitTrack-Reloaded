@@ -27,6 +27,9 @@ export function etatParDefaut(){
     profil: { sexe: null, age: null, stature: null },
     /* objectif explicite : pilote le calculateur de besoins et (à venir) le Verdict */
     objectif: { type: 'recompo' },
+    /* aliments perso (E2) : {cle: {nom, cat, kcal100, prot100, gluc100, lip100, fib100}}.
+       Fusionnés à la base curée par catalogue.js (perso prioritaire sur collision de clé). */
+    aliments: { perso: {} },
     objectifKcal: OBJ_DEFAUT,
     repas: { jour: jourLocal(), coches: {}, planJour: null },
     plan: cloneProfond(PLAN),

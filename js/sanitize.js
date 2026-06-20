@@ -85,6 +85,26 @@ export function assainirCoursesItems(arr){
   return arr.filter(it => it && typeof it === 'object' && it.id != null);
 }
 
+/* ---- aliments perso (E2) : {cle: {nom, cat, kcal100, prot100, gluc100, lip100, fib100}} ----
+   On ne garde que les entrées dont le nom est une chaîne non vide ; les macros absentes
+   ou invalides sont ramenées à 0 (jamais NaN). Renvoie toujours un objet. */
+export function assainirAlimentsPerso(obj){
+  if(!obj || typeof obj !== 'object') return {};
+  const num = v => estNombre(v) && v >= 0 ? v : 0;
+  const out = {};
+  for(const cle of Object.keys(obj)){
+    const a = obj[cle];
+    if(!a || typeof a !== 'object' || !estChaine(a.nom) || !a.nom.trim()) continue;
+    out[cle] = {
+      nom: a.nom.trim(),
+      cat: estChaine(a.cat) && a.cat ? a.cat : 'Compléments',
+      kcal100: num(a.kcal100), prot100: num(a.prot100),
+      gluc100: num(a.gluc100), lip100: num(a.lip100), fib100: num(a.fib100),
+    };
+  }
+  return out;
+}
+
 /* ---- état complet : assainit chaque section connue, en place et sans jamais lever ----
    Les valeurs par défaut / migrations restent gérées par Store.charger ; ici on ne fait
    que purger les formes invalides des collections. */
@@ -100,5 +120,7 @@ export function assainirEtat(etat){
   if(Array.isArray(etat.programmes)) etat.programmes = assainirProgrammes(etat.programmes);
   if(etat.courses && typeof etat.courses === 'object' && 'items' in etat.courses)
     etat.courses.items = assainirCoursesItems(etat.courses.items);
+  if(etat.aliments && typeof etat.aliments === 'object' && 'perso' in etat.aliments)
+    etat.aliments.perso = assainirAlimentsPerso(etat.aliments.perso);
   return etat;
 }
