@@ -7,13 +7,15 @@ import { ALIMENTS, PLAN } from './data.js';
 
 export const FLEX_MIN = 0.4, FLEX_MAX = 1.8;
 
-export function kcalItem(cle, q){ const a=ALIMENTS[cle]; return a.unite!==undefined ? a.kcalU*q : a.kcal100*q/100; }
-export function protItem(cle, q){ const a=ALIMENTS[cle]; return a.unite!==undefined ? a.protU*q : a.prot100*q/100; }
+/* item-fns : `aliments` injectable (défaut = base ALIMENTS) → l'Ut peut passer le
+   catalogue fusionné base+perso (catalogue.js) pour calculer aussi ses aliments perso. */
+export function kcalItem(cle, q, aliments=ALIMENTS){ const a=aliments[cle]; return a.unite!==undefined ? a.kcalU*q : a.kcal100*q/100; }
+export function protItem(cle, q, aliments=ALIMENTS){ const a=aliments[cle]; return a.unite!==undefined ? a.protU*q : a.prot100*q/100; }
 /* macros complètes (E3) : glucides / lipides / fibres, même logique unité vs 100 g.
    Tolère un aliment sans la donnée (legacy) → 0, jamais NaN. */
-export function glucItem(cle, q){ const a=ALIMENTS[cle]; return a.unite!==undefined ? (a.glucU||0)*q : (a.gluc100||0)*q/100; }
-export function lipItem(cle, q){  const a=ALIMENTS[cle]; return a.unite!==undefined ? (a.lipU ||0)*q : (a.lip100 ||0)*q/100; }
-export function fibItem(cle, q){  const a=ALIMENTS[cle]; return a.unite!==undefined ? (a.fibU ||0)*q : (a.fib100 ||0)*q/100; }
+export function glucItem(cle, q, aliments=ALIMENTS){ const a=aliments[cle]; return a.unite!==undefined ? (a.glucU||0)*q : (a.gluc100||0)*q/100; }
+export function lipItem(cle, q, aliments=ALIMENTS){  const a=aliments[cle]; return a.unite!==undefined ? (a.lipU ||0)*q : (a.lip100 ||0)*q/100; }
+export function fibItem(cle, q, aliments=ALIMENTS){  const a=aliments[cle]; return a.unite!==undefined ? (a.fibU ||0)*q : (a.fib100 ||0)*q/100; }
 
 /* Toutes les fonctions ci-dessous prennent le plan en paramètre (défaut = PLAN, le plan
    de référence) : à l'exécution on leur passe le plan éditable de l'utilisateur (etat.plan).
