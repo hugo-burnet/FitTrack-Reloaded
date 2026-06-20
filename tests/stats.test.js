@@ -18,6 +18,24 @@ test('moyennesHebdo : tableau vide → []', () => {
   assert.deepEqual(moyennesHebdo([]), []);
 });
 
+test('moyennesHebdo (mémoïsation T3) : même référence → même objet renvoyé (cache)', () => {
+  const poids = [{ date:'2026-01-01', kg:80 }, { date:'2026-01-08', kg:79.8 }];
+  const a = moyennesHebdo(poids);
+  const b = moyennesHebdo(poids);
+  assert.strictEqual(a, b);   // même référence d'entrée → résultat caché réutilisé
+});
+
+test('moyennesHebdo (mémoïsation T3) : nouvelle référence → recalcul, résultat à jour', () => {
+  const poids = [{ date:'2026-01-01', kg:80 }];
+  const r1 = moyennesHebdo(poids);
+  // une mutation d'état passe TOUJOURS par une réassignation (filter/sort) → nouvelle référence
+  const poids2 = [...poids, { date:'2026-01-08', kg:79 }];
+  const r2 = moyennesHebdo(poids2);
+  assert.notStrictEqual(r1, r2);
+  assert.equal(r2.length, 2);          // recalculé sur le nouveau contenu
+  assert.equal(r1.length, 1);          // l'ancien résultat reste correct
+});
+
 test('rythmeMensuel : pente linéaire -0,5 kg/sem → ≈ -2,17 kg/mois', () => {
   const poids = [
     { date:'2026-01-01', kg:80 },

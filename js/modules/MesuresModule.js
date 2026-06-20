@@ -125,22 +125,40 @@ export class MesuresModule {
       const i = Math.floor((new Date(p.date+'T12:00:00').getTime()-t0)/(7*864e5));
       return moyParSem[i] ?? null;
     });
-    if(this.chPoids) this.chPoids.destroy();
-    this.chPoids = new Chart(ctx,{type:'line',data:{labels,datasets:[
-      {label:'Pesées',data:this.etat.poids.map(p=>p.kg),borderColor:'#686f7a',backgroundColor:'#686f7a',pointRadius:3,borderWidth:1.5,tension:.2},
-      {label:'Moyenne hebdo',data:serieMoy,borderColor:'#4d7ef0',backgroundColor:'#4d7ef0',pointRadius:0,borderWidth:2.5,tension:.3,stepped:true}
-    ]},options:optCommun});
+    /* T2 : on met à jour le graphe existant (Chart.update) au lieu de le détruire/recréer
+       à chaque rendu — moins de churn, pas de fuite, transition douce. Mêmes données qu'avant. */
+    const pesees = this.etat.poids.map(p=>p.kg);
+    if(this.chPoids){
+      this.chPoids.data.labels = labels;
+      this.chPoids.data.datasets[0].data = pesees;
+      this.chPoids.data.datasets[1].data = serieMoy;
+      this.chPoids.update();
+    } else {
+      this.chPoids = new Chart(ctx,{type:'line',data:{labels,datasets:[
+        {label:'Pesées',data:pesees,borderColor:'#686f7a',backgroundColor:'#686f7a',pointRadius:3,borderWidth:1.5,tension:.2},
+        {label:'Moyenne hebdo',data:serieMoy,borderColor:'#4d7ef0',backgroundColor:'#4d7ef0',pointRadius:0,borderWidth:2.5,tension:.3,stepped:true}
+      ]},options:optCommun});
+    }
   }
 
   dessinerMens(){
     const ctx = $('graph-mens');
     const m = this.etat.mensurations;
-    if(this.chMens) this.chMens.destroy();
-    this.chMens = new Chart(ctx,{type:'line',data:{labels:m.map(x=>fmtDate(x.date)),datasets:[
-      {label:'Taille (cm)',data:m.map(x=>x.taille),borderColor:'#e07a63',backgroundColor:'#e07a63',borderWidth:2,pointRadius:4,tension:.25,spanGaps:true},
-      {label:'Bras (cm)',data:m.map(x=>x.bras),borderColor:'#4cb784',backgroundColor:'#4cb784',borderWidth:2,pointRadius:4,tension:.25,spanGaps:true,yAxisID:'y2'}
-    ]},options:{...optCommun,scales:{...optCommun.scales,
-      y2:{position:'right',ticks:{color:'#4cb784',font:{family:'Inter, system-ui, sans-serif',size:11}},grid:{display:false}}
-    }}});
+    const labels = m.map(x=>fmtDate(x.date));
+    const taille = m.map(x=>x.taille), bras = m.map(x=>x.bras);
+    /* T2 : mise à jour du graphe existant plutôt que destroy/recreate à chaque rendu */
+    if(this.chMens){
+      this.chMens.data.labels = labels;
+      this.chMens.data.datasets[0].data = taille;
+      this.chMens.data.datasets[1].data = bras;
+      this.chMens.update();
+    } else {
+      this.chMens = new Chart(ctx,{type:'line',data:{labels,datasets:[
+        {label:'Taille (cm)',data:taille,borderColor:'#e07a63',backgroundColor:'#e07a63',borderWidth:2,pointRadius:4,tension:.25,spanGaps:true},
+        {label:'Bras (cm)',data:bras,borderColor:'#4cb784',backgroundColor:'#4cb784',borderWidth:2,pointRadius:4,tension:.25,spanGaps:true,yAxisID:'y2'}
+      ]},options:{...optCommun,scales:{...optCommun.scales,
+        y2:{position:'right',ticks:{color:'#4cb784',font:{family:'Inter, system-ui, sans-serif',size:11}},grid:{display:false}}
+      }}});
+    }
   }
 }

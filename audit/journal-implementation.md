@@ -59,8 +59,10 @@ Découpée en sous-lots livrables indépendamment, chacun testé et committé. O
 - **+8 tests** (sèche/masse + repli objectif inconnu). 186 tests verts. `sw.js` v22.
 - ↪ Plats dans les courses : non retenu (les plats sont journalisés à la demande, pas planifiés → pas de dérivation bien définie).
 
-### Plomberie (entrelacée, à iso-fonctionnel)
-- Sélecteurs mémoïsés (T3), rendu ciblé + `Chart.update()` (T2), bus d'événements (T5), éclatement de `MuscuModule` — appliqués au fil des fichiers déjà ouverts pour limiter le risque de régression.
+### Plomberie (entrelacée, à iso-fonctionnel) — branche `v3-plomberie`
+- [x] **T3 — sélecteurs mémoïsés** : `stats.moyennesHebdo` mémoïsée par référence de tableau (`memoParTableau`, WeakMap). Sûr car les collections d'état sont toujours réassignées à chaque mutation (filter/sort/fusion/sanitize → nouvelle référence ⇒ cache invalidé, jamais de résultat périmé). Dédoublonne ~5 calculs identiques par rendu complet (4 modules + `rythmeMensuel` en interne). **+2 tests** (`stats.test.js`). Iso-fonctionnel.
+- [x] **T2 — rendu ciblé / `Chart.update()`** : `MesuresModule.dessinerPoids`/`dessinerMens` mettent à jour le graphe existant (labels + datasets puis `update()`) au lieu de `destroy()`+`new Chart()` à chaque rendu — moins de churn, pas de fuite, transition douce. Vérifié au navigateur (CDP) : ajout/suppression de pesée → même instance de Chart mise à jour (pas recréée). `MuscuModule.chProg` laissé en recreate (redessiné seulement au changement d'exercice ; labels/couleurs variables → recréer reste plus sûr). `sw.js` v24.
+- [ ] T5 — bus d'événements ; éclatement de `MuscuModule` : non faits (gardés pour quand le besoin se fera sentir ; risque/bénéfice moins favorable).
 
 ---
 
