@@ -36,6 +36,8 @@ export function etatParDefaut(){
        porte les repas éditables (là où vivait l'ancien `plan`). */
     plansAlim: [{ id: 'principal', nom: 'Menu principal', repas: cloneProfond(PLAN) }],
     planAlimActif: 'principal',
+    /* plats composés (E4) : recettes réutilisables {id, nom, composants:[[cle,qté]]} */
+    plats: [],
     journalRepas: [],
     programmes: cloneProfond(PROG_DEFAUT),
     programmeActif: PROG_DEFAUT[0].id,

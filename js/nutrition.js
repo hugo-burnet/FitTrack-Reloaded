@@ -50,6 +50,19 @@ export function protCible(objectifKcal, plan = PLAN){
   return Math.round(p);
 }
 
+/* macros d'un plat composé (E4) : somme des macros de ses composants [[cle,qté],…].
+   `aliments` injectable (base ou catalogue fusionné base+perso). Un composant dont
+   l'aliment est inconnu (perso supprimé, autre appareil) ou de quantité ≤ 0 est ignoré. */
+export function macrosPlat(composants, aliments = ALIMENTS){
+  const t = { kcal:0, prot:0, gluc:0, lip:0, fib:0 };
+  (composants || []).forEach(([cle, q]) => {
+    if(!aliments[cle] || !(q > 0)) return;
+    t.kcal += kcalItem(cle, q, aliments); t.prot += protItem(cle, q, aliments);
+    t.gluc += glucItem(cle, q, aliments); t.lip += lipItem(cle, q, aliments); t.fib += fibItem(cle, q, aliments);
+  });
+  return t;
+}
+
 /* macros cibles du jour = ce que délivre le plan (flex ajusté à l'objectif).
    Renvoie {prot, gluc, lip, fib} en grammes arrondis. Même règle d'arrondi de
    quantité (flex → multiple de 5 g) que protCible/qteAjustee, pour cohérence d'affichage. */

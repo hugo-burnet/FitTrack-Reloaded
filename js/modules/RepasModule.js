@@ -2,7 +2,7 @@ import { $, echap, cloneProfond, aujourdHui, slug } from '../utils.js';
 import { ALIMENTS, PLAN } from '../data.js';
 import { ORDRE_CATEGORIES } from '../data/aliments-base.js';
 import { catalogue, rechercher, categoriesPresentes } from '../catalogue.js';
-import { kcalItem, protItem, glucItem, lipItem, fibItem, facteurFlex, flexSature, protCible, macrosCible } from '../nutrition.js';
+import { kcalItem, protItem, glucItem, lipItem, fibItem, facteurFlex, flexSature, protCible, macrosCible, macrosPlat } from '../nutrition.js';
 import { moyennesHebdo } from '../stats.js';
 import { calculerBesoins, frequenceHebdo, OBJECTIFS } from '../besoins.js';
 import { repasActifs, menuActif } from '../plans.js';
@@ -25,6 +25,9 @@ export class RepasModule {
     this.persoOuvert = false;       /* éditeur d'aliments perso (E2) déplié ? */
     this.persoEdit = null;          /* clé de l'aliment perso en cours d'édition (sinon création) */
     this.menuGestionOuvert = false; /* gestion des menus (E1) dépliée ? */
+    this.platsOuvert = false;       /* éditeur de plats (E4) déplié ? */
+    this.platEdit = null;           /* id du plat en cours d'édition (sinon création) */
+    this.platComposants = [];       /* composants en cours de saisie [[cle,qté],…] */
     this.bind();
   }
 
@@ -100,6 +103,7 @@ export class RepasModule {
     /* picker hors-plan : filtre catégories + liste d'aliments (base + perso), peuplés dynamiquement */
     this.remplirFiltreCategories();
     this.remplirPickerAliments();
+    this.remplirPlatPicker();       /* picker de composants de l'éditeur de plats (E4) */
     /* catégories de l'éditeur perso (liste fixe ORDRE_CATEGORIES) */
     const selCat = $('perso-cat');
     if(selCat) selCat.innerHTML = ORDRE_CATEGORIES.map(c=>`<option value="${echap(c)}">${echap(c)}</option>`).join('');
@@ -136,6 +140,19 @@ export class RepasModule {
       if(pEdit){ this.editerPerso(pEdit.dataset.cle); return; }
       const pSup = e.target.closest('[data-action="perso-suppr"]');
       if(pSup){ this.supprimerPerso(pSup.dataset.cle); return; }
+      /* plats composés (E4) */
+      if(e.target.closest('#btn-plats-toggle')){ this.basculerPlats(); return; }
+      if(e.target.closest('#btn-plat-add-comp')){ this.ajouterComposant(); return; }
+      if(e.target.closest('#btn-plat-save')){ this.sauverPlat(); return; }
+      if(e.target.closest('#btn-plat-annuler')){ this.annulerEditPlat(); return; }
+      const compDel = e.target.closest('[data-action="plat-comp-del"]');
+      if(compDel){ this.retirerComposant(parseInt(compDel.dataset.i,10)); return; }
+      const platLog = e.target.closest('[data-action="plat-log"]');
+      if(platLog){ this.loggerPlat(platLog.dataset.id); return; }
+      const platEd = e.target.closest('[data-action="plat-editer"]');
+      if(platEd){ this.editerPlat(platEd.dataset.id); return; }
+      const platSup = e.target.closest('[data-action="plat-suppr"]');
+      if(platSup){ this.supprimerPlat(platSup.dataset.id); return; }
       /* calculateur de besoins (E5) */
       if(e.target.closest('#btn-besoins-toggle')){ this.basculerBesoins(); return; }
       const objChip = e.target.closest('#bes-objectif [data-obj]');
@@ -152,11 +169,13 @@ export class RepasModule {
       if(e.target.id==='menu-select') this.changerMenu(e.target.value);
       if(e.target.id==='extra-aliment') this.majModeExtra();
       if(e.target.id==='extra-cat') this.remplirPickerAliments();
+      if(e.target.id==='plat-aliment') this.majUnitePlat();
       if(e.target.id==='bes-sexe' || e.target.id==='bes-age' || e.target.id==='bes-stature') this.majProfilDepuisChamps();
     });
     root.addEventListener('input', e => {
       if(e.target.id==='menu-nom') this.renommerMenu(e.target.value);
       if(e.target.id==='extra-recherche') this.remplirPickerAliments();
+      if(e.target.id==='plat-recherche') this.remplirPlatPicker();
       if(e.target.id==='extra-qte' || e.target.id==='extra-kcal' || e.target.id==='extra-prot') this.majApercuExtra();
       if(e.target.id==='bes-age' || e.target.id==='bes-stature') this.renderBesoinsResultat();   /* aperçu live */
     });
@@ -432,6 +451,155 @@ export class RepasModule {
     }).join('') + '</div>';
   }
 
+  /* ================= PLATS COMPOSÉS (E4) =================
+     Recette réutilisable = liste de composants [[cle,qté],…] ; ses macros sont dérivées
+     des composants (catalogue fusionné base+perso). Un plat se journalise d'un tap. */
+  platsListe(){ return this.etat.plats || []; }
+
+  basculerPlats(){
+    this.platsOuvert = !this.platsOuvert;
+    $('plat-form').classList.toggle('cache', !this.platsOuvert);
+    $('btn-plats-toggle').setAttribute('aria-expanded', String(this.platsOuvert));
+    $('btn-plats-toggle').textContent = this.platsOuvert ? '✕ Fermer' : 'Gérer mes plats';
+    if(this.platsOuvert){ this.remplirPlatPicker(); this.renderPlatEditeur(); }
+    this.renderPlatsActifs();
+  }
+
+  /* picker de composants : liste d'aliments filtrée par la recherche (base + perso) */
+  remplirPlatPicker(){
+    const sel = $('plat-aliment'); if(!sel) return;
+    const terme = ($('plat-recherche') && $('plat-recherche').value) || '';
+    const courant = sel.value;
+    const liste = rechercher({ terme }, this.perso());
+    sel.innerHTML = liste.map(a=>{
+      const u = a.unite!==undefined ? (a.unite||'unité') : '100 g';
+      return `<option value="${echap(a.cle)}">${echap(a.nom)}${a.perso?' ★':''} — /${u}</option>`;
+    }).join('');
+    if(courant && liste.some(a=>a.cle===courant)) sel.value = courant;
+    this.majUnitePlat();
+  }
+  majUnitePlat(){
+    const cle = $('plat-aliment').value;
+    const a = cle ? this.cat()[cle] : null;
+    $('plat-unite').textContent = a ? (a.unite!==undefined ? (a.unite||'unité') : 'g') : 'g';
+  }
+  ajouterComposant(){
+    const cle = $('plat-aliment').value;
+    const qte = parseFloat($('plat-qte').value);
+    if(!cle || !this.cat()[cle]){ return; }
+    if(!(qte>0)){ $('plat-qte').focus(); return; }
+    /* même aliment déjà présent → on cumule la quantité */
+    const i = this.platComposants.findIndex(([c])=>c===cle);
+    if(i>=0) this.platComposants[i][1] += qte; else this.platComposants.push([cle, qte]);
+    $('plat-qte').value='';
+    this.renderPlatEditeur();
+  }
+  retirerComposant(i){
+    if(i>=0 && i<this.platComposants.length){ this.platComposants.splice(i,1); this.renderPlatEditeur(); }
+  }
+  sauverPlat(){
+    const nom = ($('plat-nom').value||'').trim();
+    if(!nom){ $('plat-nom').focus(); toast('Donne un nom à ton plat.', 'erreur'); return; }
+    if(!this.platComposants.length){ toast('Ajoute au moins un composant.', 'erreur'); return; }
+    const plats = this.etat.plats;
+    let id = this.platEdit;
+    if(!id){
+      const base = 'plat-'+slug(nom); id = base; let n = 2;
+      while(plats.some(p=>p.id===id)) id = `${base}-${n++}`;
+    }
+    const composants = this.platComposants.map(([c,q])=>[c,q]);
+    const i = plats.findIndex(p=>p.id===id);
+    if(i>=0) plats[i] = { ...plats[i], nom, composants }; else plats.push({ id, nom, composants });
+    this.platEdit = null; this.platComposants = [];
+    this.store.sauver();
+    this._resetPlatForm();
+    this.renderPlatEditeur();
+    this.renderPlatsActifs();
+    toast('Plat enregistré.', 'ok');
+  }
+  editerPlat(id){
+    const p = this.platsListe().find(x=>x.id===id); if(!p) return;
+    this.platEdit = id;
+    this.platComposants = p.composants.map(([c,q])=>[c,q]);
+    if(!this.platsOuvert) this.basculerPlats();
+    $('plat-nom').value = p.nom;
+    $('btn-plat-save').textContent = 'Enregistrer les modifications';
+    $('btn-plat-annuler').classList.remove('cache');
+    this.renderPlatEditeur();
+    $('plat-nom').focus();
+  }
+  annulerEditPlat(){ this.platEdit = null; this.platComposants = []; this._resetPlatForm(); this.renderPlatEditeur(); }
+  _resetPlatForm(){
+    $('plat-nom').value=''; $('plat-qte').value='';
+    $('btn-plat-save').textContent = 'Enregistrer le plat';
+    $('btn-plat-annuler').classList.add('cache');
+  }
+  supprimerPlat(id){
+    if(!this.platsListe().some(p=>p.id===id)) return;
+    this.etat.plats = this.etat.plats.filter(p=>p.id!==id);
+    if(this.platEdit===id) this.annulerEditPlat();
+    this.store.sauver();
+    this.renderPlatsActifs();
+  }
+  /* journalise un plat : entrée hors-plan agrégeant les macros de ses composants */
+  loggerPlat(id){
+    const p = this.platsListe().find(x=>x.id===id); if(!p) return;
+    const cat = this.cat();
+    const m = macrosPlat(p.composants, cat);
+    if(m.kcal<=0 && m.prot<=0){ toast('Ce plat n’a aucune macro exploitable.', 'erreur'); return; }
+    this.store.resetSiNouveauJour();
+    const jour = this.etat.repas.jour;
+    const idj = 'x-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
+    const items = p.composants.filter(([c])=>cat[c]).map(([c,q])=>{
+      const a = cat[c]; const unite = a.unite!==undefined ? (a.unite||'unité') : 'g';
+      return { cle:c, nom:a.nom, qte:q, unite };
+    });
+    this.etat.journalRepas.push({ date:jour, id:idj, nom:p.nom, horsPlan:true, plat:true,
+      kcal:Math.round(m.kcal), prot:Math.round(m.prot), gluc:Math.round(m.gluc), lip:Math.round(m.lip), fib:Math.round(m.fib),
+      objectifKcal:this.etat.objectifKcal, items });
+    this.store.sauver(); this.render();
+    toast(`« ${p.nom} » ajouté au journal.`, 'ok');
+  }
+  renderPlatEditeur(){
+    const el = $('plat-comp-liste'); if(!el) return;
+    const cat = this.cat();
+    if(!this.platComposants.length){
+      el.innerHTML = '<p class="note" style="margin:8px 0">Aucun composant. Cherche un aliment, saisis la quantité, puis « Ajouter ce composant ».</p>';
+    } else {
+      el.innerHTML = '<div class="plat-comps">' + this.platComposants.map(([c,q],i)=>{
+        const a = cat[c]; const nom = a ? a.nom : c;
+        const unite = a && a.unite!==undefined ? (a.unite||'unité') : 'g';
+        return `<div class="plat-comp"><span class="plat-comp-nom">${echap(nom)}</span>`
+          + `<span class="plat-comp-qte mono">${q} ${unite}</span>`
+          + `<button type="button" class="repas-annuler" data-action="plat-comp-del" data-i="${i}" aria-label="Retirer">✕</button></div>`;
+      }).join('') + '</div>';
+    }
+    const m = macrosPlat(this.platComposants, cat);
+    $('plat-total').textContent = this.platComposants.length
+      ? `Total : ${Math.round(m.kcal)} kcal · P ${Math.round(m.prot)} · G ${Math.round(m.gluc)} · L ${Math.round(m.lip)} · F ${Math.round(m.fib)} g`
+      : '';
+  }
+  renderPlatsActifs(){
+    const el = $('plats-actifs'); if(!el) return;
+    const plats = this.platsListe();
+    const cat = this.cat();
+    if(!plats.length){ el.innerHTML = '<p class="note" style="margin:0 0 10px">Aucun plat. Crée-en un via « Gérer mes plats » pour le journaliser d’un tap.</p>'; return; }
+    el.innerHTML = plats.map(p=>{
+      const m = macrosPlat(p.composants, cat);
+      const gestion = this.platsOuvert
+        ? `<button type="button" class="chip-mini" data-action="plat-editer" data-id="${echap(p.id)}">Modifier</button>`
+          + `<button type="button" class="repas-annuler" data-action="plat-suppr" data-id="${echap(p.id)}" aria-label="Supprimer">✕</button>`
+        : '';
+      return `<div class="plat-item">
+        <div class="perso-info"><span class="perso-nom">${echap(p.nom)}</span>
+          <span class="perso-macros mono">${Math.round(m.kcal)} kcal · P ${Math.round(m.prot)} · G ${Math.round(m.gluc)} · L ${Math.round(m.lip)} g · ${p.composants.length} compos.</span></div>
+        <div class="perso-btns">
+          <button type="button" class="chip chip-prot" data-action="plat-log" data-id="${echap(p.id)}">+ Au journal</button>
+          ${gestion}
+        </div></div>`;
+    }).join('');
+  }
+
   /* ================= CALCULATEUR DE BESOINS (E5) =================
      Profil (sexe/âge/stature) + objectif + poids et activité déduits → cible kcal/macros.
      Le poids vient de la dernière moyenne hebdo (repli : dernière pesée) ; l'activité de
@@ -538,6 +706,7 @@ export class RepasModule {
     if(document.activeElement!==obj) obj.value = this.etat.objectifKcal;
     this.renderBesoins();   /* calculateur (E5) : rafraîchit l'aperçu si déplié */
     if(this.persoOuvert) this.renderPerso();   /* éditeur d'aliments perso (E2) */
+    this.renderPlatsActifs();                  /* plats composés (E4) : liste « tap pour journaliser » */
 
     /* avertissement de saturation du facteur flex (le plan ne peut plus s'ajuster) */
     const sat = flexSature(this.etat.objectifKcal, this.planActif());
@@ -599,7 +768,10 @@ export class RepasModule {
     const extras = this.extrasDuJour();
     $('extras-liste').innerHTML = extras.length ? extras.map(e=>{
       const it = e.items && e.items[0];
-      const q = it && it.qte!=null ? ` · ${it.qte} ${it.unite||''}`.trimEnd() : '';
+      /* plat composé : on indique le nombre de composants ; sinon la quantité de l'aliment */
+      const q = (e.items && e.items.length>1)
+        ? ` · ${e.items.length} aliments`
+        : (it && it.qte!=null ? ` · ${it.qte} ${it.unite||''}`.trimEnd() : '');
       return `<div class="extra-item">
         <div class="extra-info"><span class="extra-nom">${echap(e.nom)}</span>`
         + `<span class="extra-macros mono">${e.kcal} kcal · ${e.prot} g${q}</span></div>`

@@ -71,6 +71,17 @@ test('fusion : export legacy (plan unique) met à jour les repas du menu actif',
   assert.deepEqual(actif.repas, [{id:'dej', items:[['riz',120]]}]);
 });
 
+test('fusion : plats composés réconciliés par id, l\'entrant gagne', () => {
+  const etat = etatParDefaut();
+  etat.plats = [{ id:'bowl', nom:'Bowl', composants:[['poulet',150]] }];
+  fusionnerEtat(etat, { plats:[
+    { id:'bowl', nom:'Bowl v2', composants:[['poulet',200]] },   /* remplace */
+    { id:'shake', nom:'Shake', composants:[['whey',1]] },        /* ajoute */
+  ]});
+  assert.equal(etat.plats.length, 2);
+  assert.equal(etat.plats.find(p=>p.id==='bowl').nom, 'Bowl v2');
+});
+
 test('fusion : aliments perso réconciliés par clé, l\'entrant gagne', () => {
   const etat = etatParDefaut();
   etat.aliments.perso = { a:{ nom:'A', cat:'Fruits', kcal100:50 } };

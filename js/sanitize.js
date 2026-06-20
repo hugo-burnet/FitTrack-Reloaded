@@ -97,6 +97,23 @@ export function assainirCoursesItems(arr){
   return arr.filter(it => it && typeof it === 'object' && it.id != null);
 }
 
+/* ---- plats composés (E4) : [{id, nom, composants:[[cle,qté],…]}] ----
+   On exige id + nom-chaîne ; les composants gardent une `cle` chaîne et une quantité
+   numérique > 0 (on ne valide PAS contre la base : un composant peut viser un aliment
+   perso, résolu au calcul ; un inconnu rendra 0 macro, jamais NaN). Renvoie un tableau. */
+export function assainirPlats(arr){
+  if(!Array.isArray(arr)) return [];
+  return arr
+    .filter(p => p && typeof p === 'object' && estChaine(p.id))
+    .map(p => ({
+      ...p,
+      nom: estChaine(p.nom) ? p.nom : 'Plat',
+      composants: Array.isArray(p.composants)
+        ? p.composants.filter(c => Array.isArray(c) && c.length >= 2 && estChaine(c[0]) && estNombre(c[1]) && c[1] > 0).map(([cle, q]) => [cle, q])
+        : [],
+    }));
+}
+
 /* ---- aliments perso (E2) : {cle: {nom, cat, kcal100, prot100, gluc100, lip100, fib100}} ----
    On ne garde que les entrées dont le nom est une chaîne non vide ; les macros absentes
    ou invalides sont ramenées à 0 (jamais NaN). Renvoie toujours un objet. */
@@ -135,5 +152,6 @@ export function assainirEtat(etat){
     etat.courses.items = assainirCoursesItems(etat.courses.items);
   if(etat.aliments && typeof etat.aliments === 'object' && 'perso' in etat.aliments)
     etat.aliments.perso = assainirAlimentsPerso(etat.aliments.perso);
+  if('plats' in etat) etat.plats = assainirPlats(etat.plats);
   return etat;
 }

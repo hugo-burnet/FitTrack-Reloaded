@@ -5,7 +5,7 @@
    un correctif se propage à la visite suivante sans bump manuel de version.
    L'API GitHub (données + token) n'est JAMAIS interceptée → toujours réseau direct. */
 
-const VERSION = 'v20';
+const VERSION = 'v21';
 const CACHE = `carnet-recompo-${VERSION}`;
 
 /* coquille précachée — tout en relatif (résolu contre l'emplacement du SW, donc OK

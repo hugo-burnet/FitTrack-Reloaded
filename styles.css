@@ -646,6 +646,17 @@ input:-webkit-autofill:focus{
 .perso-cat{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--craie-3)}
 .perso-btns{display:flex;align-items:center;gap:8px;flex-shrink:0}
 
+/* ---------- Plats composés (E4) ---------- */
+#plats-actifs{margin-bottom:4px}
+.plat-item{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 0;border-bottom:1px solid var(--trait)}
+.plat-item:first-child{padding-top:0}
+.plat-comps{margin:8px 0;border-top:1px solid var(--trait)}
+.plat-comp{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--trait)}
+.plat-comp-nom{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plat-comp-qte{color:var(--craie-2);font-size:13px;flex-shrink:0}
+.plat-total{margin:6px 0 2px;font-size:13px;color:var(--accent-soft);font-weight:600;font-variant-numeric:tabular-nums}
+
 /* ---------- Courses : quantités dérivées du plan (specs 4.3) ---------- */
 .courses-reglage{display:flex;align-items:center;gap:8px;margin-bottom:12px;
   font-size:13px;color:var(--craie-2);flex-wrap:wrap}

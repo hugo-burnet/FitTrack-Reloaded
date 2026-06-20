@@ -79,6 +79,8 @@ export class Store extends EventTarget {
     /* aliments perso (E2) : dictionnaire {cle: {…}} ; jamais absent pour que l'éditeur écrive sereinement */
     if(!etat.aliments || typeof etat.aliments !== 'object') etat.aliments = def.aliments;
     if(!etat.aliments.perso || typeof etat.aliments.perso !== 'object') etat.aliments.perso = {};
+    /* plats composés (E4) : collection de recettes réutilisables ; jamais absente */
+    if(!Array.isArray(etat.plats)) etat.plats = def.plats;
     if(typeof etat.objectifKcal !== 'number') etat.objectifKcal = def.objectifKcal;
     if(!etat.repas || typeof etat.repas !== 'object') etat.repas = def.repas;
     if(!etat.repas.coches) etat.repas.coches = {};

@@ -12,7 +12,7 @@
    l'app. Les évolutions v3+ (profil, macros complètes, multi-menus, charge de
    séance…) s'ajouteront ici, chacune testée isolément. */
 
-export const SCHEMA_ACTUEL = 4;
+export const SCHEMA_ACTUEL = 5;
 
 export const MIGRATIONS = [
   /* v1 → v2 : profil utilisateur + objectif explicite (E5). Le calculateur de
@@ -38,6 +38,11 @@ export const MIGRATIONS = [
         etat.planAlimActif = 'principal';
       }
       delete etat.plan;   /* la source de vérité est désormais le menu actif */
+  } },
+  /* v4 → v5 : plats composés (E4). Recettes réutilisables {id, nom, composants:[[cle,qté]]},
+     macros dérivées des composants. Collection vide par défaut. */
+  { de:4, vers:5, appliquer(etat){
+      if(!Array.isArray(etat.plats)) etat.plats = [];
   } },
 ];
 

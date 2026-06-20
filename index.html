@@ -264,6 +264,35 @@
       </div>
     </div>
 
+    <!-- Plats composés (E4) : recettes réutilisables, journalisées d'un tap -->
+    <div class="carte" id="carte-plats">
+      <div class="besoins-tete">
+        <h2>Mes plats</h2>
+        <button class="btn btn-2" id="btn-plats-toggle" type="button" aria-expanded="false">Gérer mes plats</button>
+      </div>
+      <div id="plats-actifs"></div>
+      <div id="plat-form" class="cache">
+        <div class="champ"><label for="plat-nom">Nom du plat</label>
+          <input type="text" id="plat-nom" placeholder="ex. Bowl poulet-riz" autocomplete="off"></div>
+        <label>Composants</label>
+        <div class="ligne">
+          <div><label for="plat-recherche" class="lbl-opt">Aliment</label>
+            <input type="search" id="plat-recherche" placeholder="rechercher…" autocomplete="off"></div>
+          <div><label for="plat-qte" class="lbl-opt">Quantité <span id="plat-unite" class="lbl-opt">g</span></label>
+            <input type="number" id="plat-qte" inputmode="decimal" min="0" placeholder="ex. 150"></div>
+        </div>
+        <select id="plat-aliment"></select>
+        <button class="btn btn-2" id="btn-plat-add-comp" type="button" style="margin-top:8px">+ Ajouter ce composant</button>
+        <div id="plat-comp-liste"></div>
+        <div class="plat-total mono" id="plat-total"></div>
+        <div class="perso-actions">
+          <button class="btn" id="btn-plat-save" type="button">Enregistrer le plat</button>
+          <button class="btn btn-2 cache" id="btn-plat-annuler" type="button">Annuler l'édition</button>
+        </div>
+      </div>
+      <p class="note" style="margin:10px 0 0">Un plat enregistré se journalise d'un tap (« Au journal »), avec ses macros dérivées des composants.</p>
+    </div>
+
     <p class="note" style="text-align:center">Les repas se décochent seuls à minuit (les extras hors-plan aussi). Touche « Annuler » sur un repas pris pour revenir en arrière.</p>
   </section>
 

@@ -79,10 +79,17 @@ test('migration v3 → v4 : l\'ancien plan devient le menu actif d\'une collecti
   assert.equal(e.planAlimActif, 'principal');
 });
 
-test('migration v1 (legacy) → v4 : profil + perso + plansAlim posés en une chaîne', () => {
+test('migration v4 → v5 : ajoute la collection plats[] vide', () => {
+  const e = { schema:4, plansAlim:[{id:'principal',nom:'M',repas:[]}], planAlimActif:'principal' };
+  migrer(e);
+  assert.equal(e.schema, SCHEMA_ACTUEL);
+  assert.deepEqual(e.plats, []);
+});
+
+test('migration v1 (legacy) → schéma courant : profil + perso + plansAlim + plats en une chaîne', () => {
   const e = { poids:[], plan:[{id:'dej', items:[['riz',100]]}] };
   migrer(e);
   assert.equal(e.schema, SCHEMA_ACTUEL);
-  assert.ok(e.profil && e.aliments && Array.isArray(e.plansAlim));
+  assert.ok(e.profil && e.aliments && Array.isArray(e.plansAlim) && Array.isArray(e.plats));
   assert.equal(e.planAlimActif, 'principal');
 });

@@ -74,6 +74,13 @@ export function fusionnerEtat(etat, imp){
     Object.keys(imp.courses.coches||{}).forEach(k=>{ if(imp.courses.coches[k]) etat.courses.coches[k]=true; });
   }
 
+  /* plats composés (E4) : fusion par id (l'entrant remplace un id existant), comme les menus */
+  if(Array.isArray(imp.plats) && imp.plats.length){
+    const map={}; (etat.plats||[]).forEach(p=>map[p.id]=p);
+    imp.plats.forEach(p=>{ if(p && p.id && Array.isArray(p.composants)) map[p.id]=p; });
+    etat.plats = Object.values(map);
+  }
+
   /* aliments perso (E2) : fusion par clé, l'entrant gagne (assaini ci-dessus). Permet la
      propagation des définitions perso entre appareils (cf. validation explicite V3.4). */
   if(imp.aliments && typeof imp.aliments === 'object' && imp.aliments.perso && typeof imp.aliments.perso === 'object'){

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   assainirEtat, assainirDates, serieValide, assainirSeance,
   assainirRepasPlan, assainirPlansAlim, assainirProgrammes, assainirJournalRepas, assainirCoursesItems,
-  assainirAlimentsPerso,
+  assainirAlimentsPerso, assainirPlats,
 } from '../js/sanitize.js';
 
 /* Garde-fou sur le code défensif le plus critique (jusqu'ici non testé) :
@@ -80,6 +80,19 @@ test('assainirJournalRepas : exige date + id, items toujours tableau', () => {
 
 test('assainirCoursesItems : ne garde que les objets avec id', () => {
   assert.deepEqual(assainirCoursesItems([{id:'a'}, 2, null, {nom:'sans id'}]), [{id:'a'}]);
+});
+
+test('assainirPlats : exige id + nom ; composants à clé chaîne et quantité > 0', () => {
+  const p = assainirPlats([
+    { id:'bowl', nom:'Bowl', composants:[['poulet',200],['riz',-1],[42,10],['banane',1]] },
+    { id:'nu', composants:'oops' },        /* nom manquant → défaut ; composants invalides → [] */
+    { nom:'sans id' },                      /* pas d'id → écarté */
+  ]);
+  assert.equal(p.length, 2);
+  assert.deepEqual(p[0].composants, [['poulet',200],['banane',1]]);   /* qté ≤ 0 et clé non-chaîne écartées */
+  assert.equal(p[1].nom, 'Plat');
+  assert.deepEqual(p[1].composants, []);
+  assert.deepEqual(assainirPlats('nope'), []);
 });
 
 test('assainirAlimentsPerso : exige un nom, normalise macros et défaut de catégorie', () => {

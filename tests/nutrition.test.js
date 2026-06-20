@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { basesKcal, facteurFlex, flexSature, consoQuotidienne, FLEX_MIN, FLEX_MAX,
-         kcalItem, protItem, glucItem, lipItem, fibItem, protCible, macrosCible } from '../js/nutrition.js';
+         kcalItem, protItem, glucItem, lipItem, fibItem, protCible, macrosCible, macrosPlat } from '../js/nutrition.js';
 import { ALIMENTS } from '../js/data.js';
 
 const { fixe, flex } = basesKcal();
@@ -87,4 +87,28 @@ test('macrosCible : prot identique à protCible (même base de calcul)', () => {
   assert.equal(macrosCible(2545).prot, protCible(2545));
   // les glucides (part flex : riz/avoine) montent avec l'objectif kcal
   assert.ok(macrosCible(4000).gluc > macrosCible(1600).gluc);
+});
+
+/* ---- plats composés (E4) ---- */
+
+test('macrosPlat : somme des composants (par 100 g et par unité)', () => {
+  // poulet 200 g + riz 100 g + banane 1
+  const m = macrosPlat([['poulet',200],['riz',100],['banane',1]]);
+  const attendu = {
+    kcal: kcalItem('poulet',200)+kcalItem('riz',100)+kcalItem('banane',1),
+    prot: protItem('poulet',200)+protItem('riz',100)+protItem('banane',1),
+    gluc: glucItem('poulet',200)+glucItem('riz',100)+glucItem('banane',1),
+  };
+  assert.ok(Math.abs(m.kcal-attendu.kcal)<1e-9);
+  assert.ok(Math.abs(m.prot-attendu.prot)<1e-9);
+  assert.ok(Math.abs(m.gluc-attendu.gluc)<1e-9);
+});
+
+test('macrosPlat : ignore les composants inconnus ou de quantité ≤ 0 (jamais NaN)', () => {
+  const m = macrosPlat([['poulet',100],['inconnu-xyz',50],['riz',0],['banane',-2]]);
+  assert.deepEqual(
+    { kcal:Math.round(m.kcal), prot:Math.round(m.prot) },
+    { kcal:Math.round(kcalItem('poulet',100)), prot:Math.round(protItem('poulet',100)) });
+  assert.deepEqual(macrosPlat([]), { kcal:0, prot:0, gluc:0, lip:0, fib:0 });
+  assert.deepEqual(macrosPlat(null), { kcal:0, prot:0, gluc:0, lip:0, fib:0 });
 });
