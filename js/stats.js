@@ -1,9 +1,26 @@
 /* ================= CALCULS (fonctions pures) ================= */
 
+/* mémoïsation d'un sélecteur pur prenant UN tableau en entrée (T3). Cache par RÉFÉRENCE
+   du tableau (WeakMap) : sûr ici car les collections d'état sont toujours RÉASSIGNÉES à
+   chaque mutation (filter/sort/fusion/sanitize créent un nouveau tableau) → une nouvelle
+   référence invalide automatiquement le cache, jamais de résultat périmé. Une entrée non-objet
+   (jamais le cas en pratique) court-circuite le cache. */
+function memoParTableau(fn){
+  const cache = new WeakMap();
+  return (arr) => {
+    if(arr === null || typeof arr !== 'object') return fn(arr);
+    if(cache.has(arr)) return cache.get(arr);
+    const v = fn(arr);
+    cache.set(arr, v);
+    return v;
+  };
+}
+
 /* moyenne hebdo : groupe les pesées en blocs de 7 jours comptés depuis la 1re pesée
    (PAS des semaines calendaires/ISO — l'ancrage est la date de départ de la série).
-   L'index de bloc tient compte des trous : une semaine sans pesée n'a pas d'entrée. */
-export function moyennesHebdo(poids){
+   L'index de bloc tient compte des trous : une semaine sans pesée n'a pas d'entrée.
+   Mémoïsée (appelée ~5×/rendu, et par rythmeMensuel) — voir memoParTableau. */
+function moyennesHebdoBrut(poids){
   if(poids.length===0) return [];
   const t0 = new Date(poids[0].date+'T12:00:00').getTime();
   const sem = {};
@@ -14,6 +31,7 @@ export function moyennesHebdo(poids){
   return Object.keys(sem).map(Number).sort((a,b)=>a-b)
     .map(i=>({sem:i, kg: sem[i].reduce((s,x)=>s+x,0)/sem[i].length}));
 }
+export const moyennesHebdo = memoParTableau(moyennesHebdoBrut);
 
 /* rythme en kg/mois : régression simple sur les 4 dernières moyennes hebdo */
 export function rythmeMensuel(poids){
