@@ -1,12 +1,15 @@
-import { $, echap, ilYaJours } from '../utils.js';
+import { $, echap, ilYaJours, fmtDate } from '../utils.js';
 import { moyennesHebdo, rythmeMensuel, tendanceTaille, tendanceBras, brasStagne } from '../stats.js';
 import { decisionVerdict, SCENARIOS, OBJECTIFS_VERDICT } from '../verdict.js';
 import { protCible } from '../nutrition.js';
 import { adherenceHebdo, bilanForce } from '../bilan.js';
+import { pilotageCharge, serieCharge } from '../charge.js';
+import { scoreRisk, scoreCompliance, alerteSurcharge, alerteSousCharge } from '../scores.js';
+import { optCommun } from '../charts.js';
 
 /* ================= VERDICT : l'arbre de décision (rendu) ================= */
 export class VerdictModule {
-  constructor(store, app){ this.store = store; this.app = app; }
+  constructor(store, app){ this.store = store; this.app = app; this.chCharge = null; }
 
   get etat(){ return this.store.etat; }
 
@@ -41,6 +44,79 @@ export class VerdictModule {
 
     this.renderScenarios(objectif);
     this.renderSemaine(rythme);
+    this.renderCharge();
+  }
+
+  /* ---- pilotage de la charge (V4-F0) : aiguë/chronique/ACWR + scores + alerte + courbe ---- */
+  renderCharge(){
+    const seances = this.etat.seances;
+    const p = pilotageCharge(seances);
+    const f = bilanForce(seances, ilYaJours(21));
+
+    /* scores */
+    const risk = scoreRisk({ acwr: p.acwr, monotonie: p.monotonie, declinForce: f.declin, totalForce: f.total });
+    const prog = this.etat.programmes.find(x => x.id === this.etat.programmeActif) || this.etat.programmes[0];
+    const planifiees = prog && Array.isArray(prog.jours) ? prog.jours.length : 0;
+    const cutoff = ilYaJours(6);
+    const { joursProt } = adherenceHebdo(this.etat.journalRepas, seances, protCible(this.etat.objectifKcal), cutoff);
+    const joursKcal = this.joursKcalCible(cutoff);
+    const compliance = scoreCompliance({ seancesRealisees: p.nbSeances, seancesPlanifiees: planifiees, joursProt, joursKcal });
+
+    /* alerte (surcharge prioritaire, sinon sous-charge) */
+    const alerte = (() => {
+      const a = alerteSurcharge({ acwr: p.acwr, monotonie: p.monotonie, risk: risk.score });
+      if(a.actif) return a;
+      return alerteSousCharge({ acwr: p.acwr });
+    })();
+    const boxA = $('charge-alerte');
+    if(alerte.actif){
+      boxA.className = 'verdict ' + alerte.cls;
+      $('charge-alerte-t').textContent = alerte.titre;
+      $('charge-alerte-e').textContent = alerte.e;
+    } else boxA.classList.add('cache');
+
+    /* jauges */
+    const zlib = { optimale:'zone optimale', 'sous-charge':'sous-charge', limite:'à surveiller', risque:'risque élevé', inconnue:'—' };
+    const zcls = { optimale:'ok', 'sous-charge':'info', limite:'warn', risque:'alerte', inconnue:'' };
+    $('ch-acwr').textContent = p.acwr == null ? '—' : p.acwr.toFixed(2);
+    const elZone = $('ch-zone'); elZone.textContent = zlib[p.zone] || '—';
+    elZone.className = 'charge-sub ' + (zcls[p.zone] || '');
+    $('ch-risk').textContent = risk.score == null ? '—' : risk.score;
+    $('ch-risk-sub').textContent = risk.score == null ? 'données à venir' : `${risk.niveau}${risk.confiance === 'indicatif' ? ' · indicatif' : ''}`;
+    $('ch-compliance').textContent = compliance.score == null ? '—' : compliance.score;
+    $('ch-compliance-sub').textContent = compliance.score == null ? 'données à venir' : `assidu${compliance.confiance === 'indicatif' ? ' · indicatif' : ''}`;
+    $('ch-detail').textContent = p.acwr == null
+      ? 'Enregistre des séances pour activer le pilotage de charge.'
+      : `Aiguë ${Math.round(p.aigue)} · chronique ${Math.round(p.chronique)} · charge 7 j ${Math.round(p.chargeHebdo)}${p.monotonie != null ? ` · monotonie ${p.monotonie.toFixed(1)}` : ''}`;
+
+    this.dessinerCharge(serieCharge(seances));
+  }
+
+  /* jours (depuis cutoff) où le total kcal du journal tombe dans ±10 % de l'objectif */
+  joursKcalCible(cutoff){
+    const cible = this.etat.objectifKcal;
+    if(!cible) return 0;
+    const parJour = {};
+    (this.etat.journalRepas || []).forEach(e => { if(e.date >= cutoff) parJour[e.date] = (parJour[e.date] || 0) + (e.kcal || 0); });
+    return Object.values(parJour).filter(k => k >= cible * 0.9 && k <= cible * 1.1).length;
+  }
+
+  dessinerCharge(serie){
+    const ctx = $('graph-charge'); if(!ctx) return;
+    const labels = serie.map(p => fmtDate(p.date));
+    const aigue = serie.map(p => Math.round(p.aigue));
+    const chronique = serie.map(p => Math.round(p.chronique));
+    if(this.chCharge){
+      this.chCharge.data.labels = labels;
+      this.chCharge.data.datasets[0].data = aigue;
+      this.chCharge.data.datasets[1].data = chronique;
+      this.chCharge.update();
+    } else {
+      this.chCharge = new Chart(ctx, { type:'line', data:{ labels, datasets:[
+        { label:'Aiguë (7 j)', data:aigue, borderColor:'#4d7ef0', backgroundColor:'#4d7ef0', borderWidth:2.5, pointRadius:0, tension:.3 },
+        { label:'Chronique (28 j)', data:chronique, borderColor:'#9aa1ab', backgroundColor:'#9aa1ab', borderWidth:2, pointRadius:0, tension:.3 },
+      ]}, options: optCommun });
+    }
   }
 
   /* cartes « scénario » adaptées à l'objectif courant + badge objectif */

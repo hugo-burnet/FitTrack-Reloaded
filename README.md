@@ -13,12 +13,23 @@ Vanilla **JavaScript orienté objet** (modules ES), zéro framework, **zéro bui
 L'app est découpée en 6 onglets.
 
 ### 🎯 Verdict
-Un **arbre de décision** transforme tes données en une consigne unique et nette (« −150 kcal sur le riz », « +150 kcal », « RAS — Continue »…). Calcul du **rythme en kg/mois** (régression sur les moyennes hebdo glissantes) croisé avec la **tendance du tour de taille** et du **bras** : c'est la taille qui tranche entre prise de muscle et prise de gras. Le verdict est **prudent** : aucun ajustement avant 3 moyennes hebdo, et la branche « bras qui stagne » exige 2 relevés confirmés.
+Un **arbre de décision** transforme tes données en une consigne unique et nette (« −150 kcal », « +150 kcal », « RAS — Continue »…). Calcul du **rythme en kg/mois** (régression sur les moyennes hebdo glissantes) croisé avec la **tendance du tour de taille** et du **bras** : c'est la taille qui tranche entre prise de muscle et prise de gras. Le verdict est **prudent** : aucun ajustement avant 3 moyennes hebdo, et la branche « bras qui stagne » exige 2 relevés confirmés.
+
+L'arbre est **paramétré par ton objectif** (sèche / recompo / prise de masse) : les seuils de rythme et la consigne s'adaptent, et les cartes « scénario » affichées changent en conséquence (badge d'objectif visible). L'objectif se règle dans l'onglet Repas.
+
+**Pilotage de la charge** (préparation physique) : à partir du **tonnage de chaque séance**, l'app calcule la **charge aiguë** (moyenne exponentielle 7 j) et **chronique** (28 j), leur ratio **ACWR** (zone optimale 0,8–1,3 ; risque > 1,5), la **monotonie/strain de Foster**, et en dérive deux scores 0-100 — **Risque** (surmenage) et **Assiduité** — avec une **alerte de surcharge/sous-charge** et une **courbe aiguë vs chronique**. Tout en dégradé gracieux : indicatif tant que l'historique est mince, fiable à mesure que les séances s'accumulent.
 
 Sous le verdict, un read **« Cette semaine »** entre deux verdicts mensuels : tendance lissée, **adhérence protéines (jours à la cible / 7)** et **séances sur 7 j**, plus une alerte **« force en baisse »** quand le 1RM estimé décroche sur plusieurs exercices récents — signal précoce de sous-alimentation.
 
 ### 🍽️ Repas
-Plan alimentaire du jour avec **objectif kcal ajustable**. Protéines/lipides fixés, glucides (riz/avoine) qui s'ajustent automatiquement pour atteindre la cible. Cases à cocher par repas (avec progression kcal/macros), **décochage automatique à minuit**, et journalisation détaillée de ce qui a réellement été mangé (avec quantités) pour l'export.
+Plan alimentaire du jour avec **objectif kcal ajustable**. Protéines/lipides fixés, glucides (riz/avoine) qui s'ajustent automatiquement pour atteindre la cible. Cases à cocher par repas, **décochage automatique à minuit**, et journalisation détaillée de ce qui a réellement été mangé (avec quantités) pour l'export.
+
+- **Calculateur de besoins (profil + objectif)** : sexe / âge / taille + objectif (sèche / recompo / masse) → **BMR (Mifflin-St Jeor) → TDEE** (facteur d'activité déduit de la **fréquence réelle des séances**) → cible kcal et **répartition macros** (protéines g/kg, lipides %, glucides = reste, fibres indicatives). Le poids vient de la dernière moyenne hebdo. La cible calculée remplace le nombre codé en dur et reste surchargeable à la main.
+- **Macros complètes** : chaque aliment porte **kcal + protéines + glucides + lipides + fibres**. La carte cible affiche la répartition **P / G / L (+ fibres)** consommée vs cible, avec l'écart.
+- **Base d'aliments curée** (~170 aliments en 13 catégories : féculents, légumineuses, viandes, poissons, laitages, fruits, légumes, oléagineux, sucré, boissons, plats, compléments…) + **éditeur d'aliments perso**. Le sélecteur hors-plan a **recherche** (insensible aux accents) et **filtre par catégorie**.
+- **Multi-menus** : crée plusieurs menus (Sèche, Masse, Maintien…), bascule de l'un à l'autre, duplique / renomme / supprime. La cible, l'écart **et les courses suivent le menu actif**.
+- **Plats composés** : enregistre une recette (liste d'aliments + quantités) ; ses macros sont **dérivées des composants** et tu la journalises **d'un tap**.
+- **Comblement protéique** : si un déficit de protéines subsiste, l'app suggère des options chiffrées (whey / skyr / poulet) à ajouter d'un tap.
 
 ### 🏋️ Muscu
 Le cœur de l'app, pensé pour la **surcharge progressive « 0 doute »** :
@@ -40,7 +51,7 @@ Le cœur de l'app, pensé pour la **surcharge progressive « 0 doute »** :
 Saisie des pesées et du relevé mensuel (taille contractée/relâchée, bras, cuisse, torse). Bandeau de stats (moyenne 7 j, taille, bras avec flèches de tendance), **courbes** poids + moyenne hebdo et taille vs bras, historiques supprimables.
 
 ### 🛒 Courses
-Liste de courses par rayon, cases à cocher, ajout/suppression d'articles, « tout décocher » pour la semaine suivante. Les quantités des aliments du plan sont **dérivées automatiquement** (plan × nombre de jours, ajustées à ton objectif kcal) — ferme la boucle plan → conso → liste.
+Liste de courses par rayon, cases à cocher, ajout/suppression d'articles, « tout décocher » pour la semaine suivante. Les quantités des aliments sont **dérivées automatiquement** du **menu actif** × le nombre de jours (ajustées à ton objectif kcal) — ferme la boucle menu → conso → liste, et se recalcule au changement de menu.
 
 ### 💾 Données
 - **Synchro automatique (Gist GitHub)** : à chaque modif, l'état est poussé dans un Gist secret ; au démarrage il est relu et **fusionné** (par date / id). Le **token** (fine-grained, scope Gists) reste **uniquement** dans le navigateur — jamais dans le code, l'export ou le Gist de données — et le champ `<input type="password">` permet à ton gestionnaire de mots de passe (Trousseau / Google) de le retenir. Indicateur de statut (synchronisé / hors-ligne / erreur), repli local en cas de coupure.
@@ -67,7 +78,7 @@ Sur **GitHub Pages**, aucune manipulation : les modules ES sont servis en HTTP, 
 
 ## Tests
 
-Les moteurs purs sont couverts par des tests unitaires (**42 tests**), via le **runner natif de Node** — aucune dépendance à installer :
+Les moteurs purs sont couverts par des tests unitaires (**205 tests**), via le **runner natif de Node** — aucune dépendance à installer :
 
 ```bash
 npm test          # ou : node --test
@@ -75,10 +86,16 @@ npm test          # ou : node --test
 
 Cibles :
 - `progression.js` — `recommander` (toutes les branches), `statsExo`, `parseFourchette`, `meilleurE1rm`.
-- `stats.js` — `moyennesHebdo`, `rythmeMensuel`, `tendanceTaille/Bras`, `e1rm` (plafond reps), `brasStagne`.
-- `nutrition.js` — `facteurFlex` (bornes & saturation), `consoQuotidienne`.
-- `verdict.js` — l'arbre de décision (chaque branche + anti-réactivité).
-- `bilan.js` — `adherenceHebdo`, `bilanForce`.
+- `stats.js` — `moyennesHebdo` (+ mémoïsation), `rythmeMensuel`, `tendanceTaille/Bras`, `e1rm` (plafond reps), `brasStagne`.
+- `nutrition.js` — `facteurFlex`, `consoQuotidienne`, item-fns gluc/lip/fib, `macrosCible`, `macrosPlat`.
+- `catalogue.js` / `aliments-base.js` — base curée cohérente (Atwater), fusion base+perso, recherche/filtre.
+- `plans.js` — menu actif & repas actifs (multi-menus).
+- `besoins.js` — BMR / TDEE / split macros (calculateur).
+- `verdict.js` — l'arbre de décision pour chaque objectif (sèche/recompo/masse) + anti-réactivité.
+- `charge.js` — charge aiguë/chronique, ACWR & zones, monotonie/strain, série.
+- `scores.js` — Compliance, Risk, alertes surcharge/sous-charge.
+- `bilan.js` — `adherenceHebdo`, `bilanForce`. · `xp.js` — XP, niveaux, gating de progression.
+- `migrations.js` / `sanitize.js` / `defaults.js` / `fusion.js` — schéma 1→5, assainissement, fusion par date/id/clé.
 - `RepasModule` — moteur de comblement protéique.
 
 ---
@@ -105,14 +122,22 @@ js/
   fusion.js           fusion d'état par date / id (import manuel ET synchro)
   sanitize.js         assainissement des données (ne jamais crasher au rendu)
   ui.js               toasts + dialogues inline (remplace alert/confirm/prompt)
-  data.js             constantes & données par défaut (aliments, plan, programme, courses)
+  data.js             constantes & plan/programme/courses ; ALIMENTS = base curée
+  data/aliments-base.js  base d'aliments curée (~170, catégorisée, macros complètes)
+  defaults.js         fabrique unique de l'état par défaut
+  migrations.js       versionnement de schéma (1→5) + migrations
   utils.js            helpers (dates, formatage, slug, échappement…)
   — moteurs purs (testés) —
-  stats.js            moyennes hebdo, rythme, tendances, 1RM (Epley borné), brasStagne
+  stats.js            moyennes hebdo (mémoïsées), rythme, tendances, 1RM, brasStagne
   progression.js      surcharge progressive (reco, repos, e1RM)
   xp.js               système d'XP & de niveaux (volume → XP, courbe, paliers)
-  nutrition.js        facteur flex, cibles, conso quotidienne, comblement
-  verdict.js          arbre de décision recompo
+  nutrition.js        flex, cibles, macros complètes (P/G/L/fibres), macros de plat
+  catalogue.js        fusion base + aliments perso, recherche / filtre
+  plans.js            multi-menus (menu actif & repas actifs)
+  besoins.js          calculateur BMR → TDEE → cible kcal/macros (E5)
+  verdict.js          arbre de décision multi-objectif (sèche/recompo/masse)
+  charge.js           pilotage de charge (aiguë/chronique, ACWR, monotonie/strain)
+  scores.js           scores composites (Risque, Assiduité) + alertes
   bilan.js            reads hebdo (adhérence, signal de force)
   charts.js           config Chart.js partagée
   RestTimer.js        chrono de repos
