@@ -27,6 +27,18 @@ export function assainirRepasPlan(arr){
   return repas.length ? repas : null;
 }
 
+/* ---- menus d'alimentation (E1) : [{id, nom, repas:[…]}] ----
+   On exige id + nom-chaîne ; les repas sont assainis comme un plan (aliments connus).
+   Un menu aux repas tous invalides survit avec repas:[] (comme un programme sans jour).
+   Renvoie null si rien d'exploitable → Store/Import retombe sur les menus par défaut. */
+export function assainirPlansAlim(arr){
+  if(!Array.isArray(arr)) return null;
+  const menus = arr
+    .filter(m => m && typeof m === 'object' && estChaine(m.id))
+    .map(m => ({ ...m, nom: estChaine(m.nom) ? m.nom : 'Menu', repas: assainirRepasPlan(m.repas) || [] }));
+  return menus.length ? menus : null;
+}
+
 /* ---- entrées datées (pesées, mensurations) : la clé de fusion est `date` ---- */
 export function assainirDates(arr){
   if(!Array.isArray(arr)) return [];
@@ -114,7 +126,8 @@ export function assainirEtat(etat){
   if('mensurations' in etat)  etat.mensurations = assainirDates(etat.mensurations);
   if('seances' in etat)       etat.seances      = assainirSeances(etat.seances);
   if('journalRepas' in etat)  etat.journalRepas = assainirJournalRepas(etat.journalRepas);
-  if('plan' in etat)          etat.plan         = assainirRepasPlan(etat.plan);   /* null → Store re-défaut */
+  if('plan' in etat)          etat.plan         = assainirRepasPlan(etat.plan);   /* legacy (≤ schéma 3) : géré par migration/fusion */
+  if('plansAlim' in etat)     etat.plansAlim    = assainirPlansAlim(etat.plansAlim); /* null → Store re-défaut */
   if(etat.repas && typeof etat.repas === 'object' && 'planJour' in etat.repas)
     etat.repas.planJour = assainirRepasPlan(etat.repas.planJour);                  /* null → pas de surcharge */
   if(Array.isArray(etat.programmes)) etat.programmes = assainirProgrammes(etat.programmes);

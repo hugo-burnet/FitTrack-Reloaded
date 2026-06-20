@@ -5,7 +5,7 @@
    un correctif se propage à la visite suivante sans bump manuel de version.
    L'API GitHub (données + token) n'est JAMAIS interceptée → toujours réseau direct. */
 
-const VERSION = 'v19';
+const VERSION = 'v20';
 const CACHE = `carnet-recompo-${VERSION}`;
 
 /* coquille précachée — tout en relatif (résolu contre l'emplacement du SW, donc OK
@@ -15,7 +15,7 @@ const SHELL = [
   './vendor/chart.umd.min.js',
   './js/main.js', './js/App.js', './js/Store.js', './js/Sync.js', './js/gist.js',
   './js/fusion.js', './js/ui.js', './js/idb.js', './js/sanitize.js', './js/data.js', './js/utils.js', './js/nutrition.js',
-  './js/data/aliments-base.js', './js/catalogue.js',
+  './js/data/aliments-base.js', './js/catalogue.js', './js/plans.js',
   './js/defaults.js', './js/migrations.js', './js/besoins.js',
   './js/charts.js', './js/stats.js', './js/progression.js', './js/xp.js', './js/verdict.js', './js/bilan.js', './js/RestTimer.js',
   './js/modules/MesuresModule.js', './js/modules/VerdictModule.js', './js/modules/RepasModule.js',

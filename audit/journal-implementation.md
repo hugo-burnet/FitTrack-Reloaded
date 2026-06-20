@@ -46,11 +46,11 @@ Découpée en sous-lots livrables indépendamment, chacun testé et committé. O
 ### V3.3 — Base d'aliments enrichie + perso (E2) ✅ FAIT
 - [x] **V3.3a** — Base curée embarquée `js/data/aliments-base.js` (**167 aliments** catégorisés, 13 catégories ; clés du PLAN/COURSES figées, valeurs d'origine conservées). kcal dérivées par Atwater (4·prot+4·gluc+9·lip) → cohérence interne garantie. `js/catalogue.js` (pur) : `catalogue(perso)` fusionne base+perso (perso écrase), `tousAliments`/`categoriesPresentes`/`rechercher` (accent-insensible, filtre catégorie). `data.js : ALIMENTS = ALIMENTS_BASE`. Item-fns de `nutrition.js` reçoivent un `aliments` injectable (défaut base). **+8 tests** (`tests/catalogue.test.js`). `sw.js` v18 (+ 2 fichiers précachés).
 - [x] **V3.3b** — État `aliments.perso` (**migration schéma 2→3**, defaults + `Store._appliquerDefauts` + `assainirAlimentsPerso`). Éditeur d'aliments perso (carte « Mes aliments » : ajout/édition/suppression, kcal saisies ou dérivées Atwater). Picker hors-plan repensé : **recherche** (accent-insensible) + **filtre par catégorie**, aliments perso marqués ★ et calculés via le catalogue fusionné. **+4 tests** (migration v2→v3, `assainirAlimentsPerso`). 162 tests verts. `sw.js` v19.
-- ⚠ Limite connue : `fusion.js` (gelé) ne fusionne pas le champ `aliments` → les définitions perso ne se synchronisent pas entre appareils (les entrées de journal stockent déjà leurs macros → intactes). Extension `fusion.js` à valider avant V3.4.
+- ✅ **Synchro perso** : extension de `fusion.js` **validée explicitement** (2026-06-20). Les aliments perso se fusionnent désormais par clé (l'entrant gagne) → propagation entre appareils. Fait dans V3.4a.
 
-### V3.4 — Multi-menus (E1) + Plats composés (E4)
-- `plansAlim[]` + `planAlimActif` (modèle Muscu) + éditeur de menu.
-- `plats[]` : recette réutilisable, macros dérivées des composants.
+### V3.4 — Multi-menus (E1) + Plats composés (E4) 🚧 EN COURS
+- [x] **V3.4a** — Multi-menus (E1). Source de vérité : `plansAlim[]` + `planAlimActif` (modèle Muscu `programmes[]`/`programmeActif`) ; l'ancien `etat.plan` disparaît (devient le menu actif). `js/plans.js` (pur) : `menuActif`/`repasActifs`. **Migration schéma 3→4** (wrap `plan`→`plansAlim`, supprime `plan`). `defaults` + `Store._appliquerDefauts` + `assainirPlansAlim`. **`fusion.js` étendu** (validé) : menus par id + `planAlimActif` + repli legacy `plan` + **aliments perso par clé**. RepasModule/CoursesModule refactorés sur `planActif()`/`repasActifs`. UI : carte « Menu » (sélecteur + nouveau/dupliquer/renommer/supprimer ; édition du contenu via « Réorganiser »). **+11 tests** (`plans`, migration 3→4, `assainirPlansAlim`, fusion menus+perso ; `defauts`/`fusion` mis à jour). 173 tests verts. `sw.js` v20.
+- [ ] **V3.4b** — Plats composés (E4) : `plats[]` réutilisables, macros dérivées des composants, log d'un plat d'un tap.
 
 ### V3.5 — Verdict multi-objectif + Courses dérivées
 - `decisionVerdict` paramétré par `objectif.type` ; consigne exprimée en kcal/macros.

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   assainirEtat, assainirDates, serieValide, assainirSeance,
-  assainirRepasPlan, assainirProgrammes, assainirJournalRepas, assainirCoursesItems,
+  assainirRepasPlan, assainirPlansAlim, assainirProgrammes, assainirJournalRepas, assainirCoursesItems,
   assainirAlimentsPerso,
 } from '../js/sanitize.js';
 
@@ -46,6 +46,20 @@ test('assainirRepasPlan : aliments connus + quantités numériques ; null si rie
   /* null seulement quand AUCUN repas ne survit au filtre de forme (ici : pas d'id) */
   assert.equal(assainirRepasPlan([{items:[['riz',100]]}]), null);
   assert.equal(assainirRepasPlan('nope'), null);
+});
+
+test('assainirPlansAlim : exige id + nom ; repas nettoyés (aliments connus) ; null si vide', () => {
+  const m = assainirPlansAlim([
+    { id:'a', nom:'Sèche', repas:[{id:'dej', items:[['riz',100],['inconnu',50]]}] },
+    { id:'b', repas:[{id:'x', items:[['inconnu',1]]}] },   /* nom manquant → défaut ; repas vidés */
+    { nom:'sans id' },                                      /* pas d'id → écarté */
+  ]);
+  assert.equal(m.length, 2);
+  assert.deepEqual(m[0].repas, [{id:'dej', items:[['riz',100]]}]);
+  assert.equal(m[1].nom, 'Menu');         /* nom par défaut */
+  assert.deepEqual(m[1].repas, [{id:'x', items:[]}]);
+  assert.equal(assainirPlansAlim([{nom:'x'}]), null);   /* aucun menu valide */
+  assert.equal(assainirPlansAlim('nope'), null);
 });
 
 test('assainirProgrammes : exige id + jours[] dont chaque jour a un tableau exercices', () => {

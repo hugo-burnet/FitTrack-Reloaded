@@ -66,3 +66,23 @@ test('migration v2 → v3 : ne dé-référence pas un aliments.perso déjà pré
   migrer(e);
   assert.equal(e.aliments.perso, perso);   /* même référence : pas écrasé */
 });
+
+test('migration v3 → v4 : l\'ancien plan devient le menu actif d\'une collection', () => {
+  const plan = [{id:'dej', items:[['riz',120]]}];
+  const e = { schema:3, plan };
+  migrer(e);
+  assert.equal(e.schema, SCHEMA_ACTUEL);
+  assert.ok(!('plan' in e), 'l\'ancien champ plan est retiré');
+  assert.equal(e.plansAlim.length, 1);
+  assert.equal(e.plansAlim[0].id, 'principal');
+  assert.deepEqual(e.plansAlim[0].repas, plan);   /* repas préservés tels quels */
+  assert.equal(e.planAlimActif, 'principal');
+});
+
+test('migration v1 (legacy) → v4 : profil + perso + plansAlim posés en une chaîne', () => {
+  const e = { poids:[], plan:[{id:'dej', items:[['riz',100]]}] };
+  migrer(e);
+  assert.equal(e.schema, SCHEMA_ACTUEL);
+  assert.ok(e.profil && e.aliments && Array.isArray(e.plansAlim));
+  assert.equal(e.planAlimActif, 'principal');
+});

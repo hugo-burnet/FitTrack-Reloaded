@@ -1,11 +1,12 @@
 import { $, echap, cloneProfond, aujourdHui, slug } from '../utils.js';
-import { ALIMENTS } from '../data.js';
+import { ALIMENTS, PLAN } from '../data.js';
 import { ORDRE_CATEGORIES } from '../data/aliments-base.js';
 import { catalogue, rechercher, categoriesPresentes } from '../catalogue.js';
 import { kcalItem, protItem, glucItem, lipItem, fibItem, facteurFlex, flexSature, protCible, macrosCible } from '../nutrition.js';
 import { moyennesHebdo } from '../stats.js';
 import { calculerBesoins, frequenceHebdo, OBJECTIFS } from '../besoins.js';
-import { toast } from '../ui.js';
+import { repasActifs, menuActif } from '../plans.js';
+import { toast, demander, confirmer } from '../ui.js';
 
 /* ================= REPAS : cible du jour, écart temps réel, log de la réalité =================
    Modèle « cible + écart » (specs 4.1) : le plan n'est qu'un DÉFAUT suggéré ; la vérité,
@@ -23,6 +24,7 @@ export class RepasModule {
     this.besoinsOuvert = false;     /* calculateur de besoins (E5) déplié ? */
     this.persoOuvert = false;       /* éditeur d'aliments perso (E2) déplié ? */
     this.persoEdit = null;          /* clé de l'aliment perso en cours d'édition (sinon création) */
+    this.menuGestionOuvert = false; /* gestion des menus (E1) dépliée ? */
     this.bind();
   }
 
@@ -33,8 +35,66 @@ export class RepasModule {
   /* catalogue fusionné base + perso : sert au picker et aux calculs des extras */
   cat(){ return catalogue(this.perso()); }
 
-  /* plan effectif : surcharge du jour si elle existe, sinon le plan permanent */
-  plan(){ return this.etat.repas.planJour || this.etat.plan; }
+  /* ---- multi-menus (E1) ---- */
+  menuActif(){ return menuActif(this.etat); }
+  basculerGestionMenu(){
+    this.menuGestionOuvert = !this.menuGestionOuvert;
+    $('menu-gestion').classList.toggle('cache', !this.menuGestionOuvert);
+    $('btn-menu-gerer').setAttribute('aria-expanded', String(this.menuGestionOuvert));
+    $('btn-menu-gerer').textContent = this.menuGestionOuvert ? '✕ Fermer' : 'Gérer les menus';
+    this.renderMenu();
+  }
+  changerMenu(id){
+    if(!this.etat.plansAlim.some(p=>p.id===id)) return;
+    this.etat.planAlimActif = id;
+    this.etat.repas.planJour = null;   /* la surcharge du jour appartenait à l'ancien menu */
+    this.store.sauver();
+    this.render();
+  }
+  async nouveauMenu(){
+    const nom = await demander('Nom du nouveau menu ?', 'Nouveau menu');
+    if(nom===null) return;
+    const id = 'm'+Date.now();
+    this.etat.plansAlim.push({ id, nom:(nom.trim()||'Nouveau menu'), repas:cloneProfond(PLAN) });
+    this.changerMenu(id);
+    if(!this.menuGestionOuvert) this.basculerGestionMenu();
+  }
+  dupliquerMenu(){
+    const actif = this.menuActif(); if(!actif) return;
+    const id = 'm'+Date.now();
+    this.etat.plansAlim.push({ id, nom:`${actif.nom} (copie)`, repas:cloneProfond(actif.repas) });
+    this.changerMenu(id);
+  }
+  renommerMenu(v){
+    const actif = this.menuActif(); if(!actif) return;
+    actif.nom = (v||'').trim() || 'Menu';
+    this.store.sauver();
+    this.renderMenu();   /* met à jour l'option du sélecteur sans voler le focus du champ */
+  }
+  async supprimerMenu(){
+    if(this.etat.plansAlim.length<=1){ toast('Garde au moins un menu.', 'erreur'); return; }
+    if(!(await confirmer('Supprimer ce menu entier ?', {danger:true}))) return;
+    const id = this.etat.planAlimActif;
+    this.etat.plansAlim = this.etat.plansAlim.filter(p=>p.id!==id);
+    this.etat.planAlimActif = this.etat.plansAlim[0].id;
+    this.etat.repas.planJour = null;
+    this.store.sauver();
+    this.render();
+  }
+  renderMenu(){
+    const sel = $('menu-select'); if(!sel) return;
+    const actif = this.menuActif();
+    sel.innerHTML = this.etat.plansAlim.map(p=>
+      `<option value="${echap(p.id)}"${actif&&p.id===actif.id?' selected':''}>${echap(p.nom)}</option>`).join('');
+    const nom = $('menu-nom');
+    if(nom && document.activeElement!==nom) nom.value = actif ? actif.nom : '';
+    $('btn-menu-suppr').disabled = this.etat.plansAlim.length<=1;
+  }
+
+  /* repas du menu actif (E1) : source de vérité éditable (ex-`etat.plan`) */
+  planActif(){ return repasActifs(this.etat); }
+  /* plan effectif : surcharge du jour si elle existe, sinon les repas du menu actif */
+  plan(){ return this.etat.repas.planJour || this.planActif(); }
 
   bind(){
     /* picker hors-plan : filtre catégories + liste d'aliments (base + perso), peuplés dynamiquement */
@@ -48,6 +108,11 @@ export class RepasModule {
     root.addEventListener('click', e => {
       const step = e.target.closest('[data-action="obj-step"]');
       if(step){ this.ajusterObjectif(parseInt(step.dataset.delta,10)); return; }
+      /* multi-menus (E1) */
+      if(e.target.closest('#btn-menu-gerer')){ this.basculerGestionMenu(); return; }
+      if(e.target.closest('#btn-menu-nouveau')){ this.nouveauMenu(); return; }
+      if(e.target.closest('#btn-menu-dupliquer')){ this.dupliquerMenu(); return; }
+      if(e.target.closest('#btn-menu-suppr')){ this.supprimerMenu(); return; }
       if(e.target.closest('#btn-repas-reorg')){ this.basculerReorg(); return; }
       const portee = e.target.closest('[data-action="depl-portee"]');
       if(portee){ this.porteeDepl = portee.dataset.portee; this.render(); return; }
@@ -84,11 +149,13 @@ export class RepasModule {
       if(carte && (e.key===' '||e.key==='Enter')){ e.preventDefault(); this.prendreRepas(carte.dataset.id); }
     });
     root.addEventListener('change', e => {
+      if(e.target.id==='menu-select') this.changerMenu(e.target.value);
       if(e.target.id==='extra-aliment') this.majModeExtra();
       if(e.target.id==='extra-cat') this.remplirPickerAliments();
       if(e.target.id==='bes-sexe' || e.target.id==='bes-age' || e.target.id==='bes-stature') this.majProfilDepuisChamps();
     });
     root.addEventListener('input', e => {
+      if(e.target.id==='menu-nom') this.renommerMenu(e.target.value);
       if(e.target.id==='extra-recherche') this.remplirPickerAliments();
       if(e.target.id==='extra-qte' || e.target.id==='extra-kcal' || e.target.id==='extra-prot') this.majApercuExtra();
       if(e.target.id==='bes-age' || e.target.id==='bes-stature') this.renderBesoinsResultat();   /* aperçu live */
@@ -99,7 +166,7 @@ export class RepasModule {
   /* ---- calculs nutritionnels (moteur pur dans nutrition.js) ---- */
   qteAjustee(cle, qBase){
     if(!ALIMENTS[cle].flex) return qBase;
-    const q = qBase * facteurFlex(this.etat.objectifKcal, this.etat.plan);
+    const q = qBase * facteurFlex(this.etat.objectifKcal, this.planActif());
     return Math.round(q/5)*5; /* arrondi à 5 g */
   }
   repasKcal(r){ return r.items.reduce((s,[cle,q])=>s+kcalItem(cle, this.qteAjustee(cle,q)),0); }
@@ -110,7 +177,7 @@ export class RepasModule {
 
   /* cible du jour : kcal = objectif réglé ; macros = ce que le plan délivre (flex ajusté) */
   cibles(){
-    const m = macrosCible(this.etat.objectifKcal, this.etat.plan);
+    const m = macrosCible(this.etat.objectifKcal, this.planActif());
     return { kcal:this.etat.objectifKcal, prot:m.prot, gluc:m.gluc, lip:m.lip, fib:m.fib };
   }
 
@@ -466,13 +533,14 @@ export class RepasModule {
   /* ---- affichage ---- */
   render(){
     this.store.resetSiNouveauJour();
+    this.renderMenu();   /* multi-menus (E1) : sélecteur + nom du menu actif */
     const obj = $('obj-kcal');
     if(document.activeElement!==obj) obj.value = this.etat.objectifKcal;
     this.renderBesoins();   /* calculateur (E5) : rafraîchit l'aperçu si déplié */
     if(this.persoOuvert) this.renderPerso();   /* éditeur d'aliments perso (E2) */
 
     /* avertissement de saturation du facteur flex (le plan ne peut plus s'ajuster) */
-    const sat = flexSature(this.etat.objectifKcal, this.etat.plan);
+    const sat = flexSature(this.etat.objectifKcal, this.planActif());
     const fw = $('flex-warn');
     if(sat==='bas'){
       fw.classList.remove('cache');
@@ -609,8 +677,8 @@ export class RepasModule {
 
   /* déplace un aliment d'un repas à l'autre, selon la portée choisie.
      - 'jour' : agit sur une copie du plan valable aujourd'hui (planJour, créée à la volée)
-     - 'plan' : agit sur le plan permanent (et reporte le déplacement sur planJour si actif,
-                pour que la vue du jour reste cohérente). Repérage par `cle` → robuste. */
+     - 'plan' : agit sur les repas du menu actif (et reporte le déplacement sur planJour si
+                actif, pour que la vue du jour reste cohérente). Repérage par `cle` → robuste. */
   deplacerAliment(fromId, cle, toId){
     const appliquer = repas => {
       const from = repas.find(r=>r.id===fromId), to = repas.find(r=>r.id===toId);
@@ -620,10 +688,10 @@ export class RepasModule {
       to.items.push(from.items.splice(i,1)[0]);
     };
     if(this.porteeDepl==='jour'){
-      if(!this.etat.repas.planJour) this.etat.repas.planJour = cloneProfond(this.etat.plan);
+      if(!this.etat.repas.planJour) this.etat.repas.planJour = cloneProfond(this.planActif());
       appliquer(this.etat.repas.planJour);
     } else {
-      appliquer(this.etat.plan);
+      appliquer(this.planActif());
       if(this.etat.repas.planJour) appliquer(this.etat.repas.planJour);
     }
     this.deplItem = null;

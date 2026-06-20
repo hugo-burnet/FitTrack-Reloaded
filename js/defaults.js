@@ -32,7 +32,10 @@ export function etatParDefaut(){
     aliments: { perso: {} },
     objectifKcal: OBJ_DEFAUT,
     repas: { jour: jourLocal(), coches: {}, planJour: null },
-    plan: cloneProfond(PLAN),
+    /* multi-menus (E1) : collection de menus + menu actif (modèle Muscu). Le menu actif
+       porte les repas éditables (là où vivait l'ancien `plan`). */
+    plansAlim: [{ id: 'principal', nom: 'Menu principal', repas: cloneProfond(PLAN) }],
+    planAlimActif: 'principal',
     journalRepas: [],
     programmes: cloneProfond(PROG_DEFAUT),
     programmeActif: PROG_DEFAUT[0].id,

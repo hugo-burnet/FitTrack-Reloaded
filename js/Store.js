@@ -85,8 +85,12 @@ export class Store extends EventTarget {
     /* planJour : déplacements d'aliments valables seulement aujourd'hui (sinon null).
        Réinitialisé à minuit comme les cochages (cf. resetSiNouveauJour). */
     if(!Array.isArray(etat.repas.planJour)) etat.repas.planJour = null;
-    /* plan nutritionnel ÉDITABLE (déplacement d'aliments entre repas). Défaut = PLAN de référence. */
-    if(!Array.isArray(etat.plan) || !etat.plan.length) etat.plan = def.plan;
+    /* multi-menus (E1) : collection ÉDITABLE + menu actif (modèle programmes/programmeActif).
+       Le menu actif porte les repas (déplacement d'aliments entre repas). Défaut = PLAN de référence. */
+    if(!Array.isArray(etat.plansAlim) || !etat.plansAlim.length) etat.plansAlim = def.plansAlim;
+    if(!etat.planAlimActif || !etat.plansAlim.some(p=>p.id===etat.planAlimActif)) etat.planAlimActif = etat.plansAlim[0].id;
+    const menuActif = etat.plansAlim.find(p=>p.id===etat.planAlimActif);
+    if(!Array.isArray(menuActif.repas) || !menuActif.repas.length) menuActif.repas = def.plansAlim[0].repas;
     /* nouveaux modules : journal repas, muscu, courses */
     if(!Array.isArray(etat.journalRepas)) etat.journalRepas = def.journalRepas;
     if(!Array.isArray(etat.programmes) || !etat.programmes.length) etat.programmes = def.programmes;

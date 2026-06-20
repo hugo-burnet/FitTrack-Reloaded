@@ -12,7 +12,7 @@
    l'app. Les évolutions v3+ (profil, macros complètes, multi-menus, charge de
    séance…) s'ajouteront ici, chacune testée isolément. */
 
-export const SCHEMA_ACTUEL = 3;
+export const SCHEMA_ACTUEL = 4;
 
 export const MIGRATIONS = [
   /* v1 → v2 : profil utilisateur + objectif explicite (E5). Le calculateur de
@@ -27,6 +27,17 @@ export const MIGRATIONS = [
   { de:2, vers:3, appliquer(etat){
       if(!etat.aliments || typeof etat.aliments !== 'object') etat.aliments = { perso:{} };
       if(!etat.aliments.perso || typeof etat.aliments.perso !== 'object') etat.aliments.perso = {};
+  } },
+  /* v3 → v4 : multi-menus (E1). L'unique `etat.plan` devient le menu actif d'une
+     collection `plansAlim[]` (modèle Muscu programmes[] + programmeActif). L'ancien
+     plan est préservé tel quel dans un premier menu « Menu principal ». */
+  { de:3, vers:4, appliquer(etat){
+      if(!Array.isArray(etat.plansAlim) || !etat.plansAlim.length){
+        const repas = Array.isArray(etat.plan) ? etat.plan : [];
+        etat.plansAlim = [{ id:'principal', nom:'Menu principal', repas }];
+        etat.planAlimActif = 'principal';
+      }
+      delete etat.plan;   /* la source de vérité est désormais le menu actif */
   } },
 ];
 

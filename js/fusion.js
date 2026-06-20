@@ -24,9 +24,18 @@ export function fusionnerEtat(etat, imp){
   /* objectif kcal : l'entrant gagne s'il est présent */
   if(typeof imp.objectifKcal === 'number') etat.objectifKcal = imp.objectifKcal;
 
-  /* plan de repas éditable (déplacement d'aliments) : l'entrant gagne s'il est valide
-     (assaini ci-dessus → null si corrompu). Pas de fusion fine : c'est une structure unique. */
-  if(Array.isArray(imp.plan)) etat.plan = imp.plan;
+  /* menus d'alimentation (E1) : fusion par id (l'entrant remplace un id existant),
+     comme les programmes Muscu. Repli legacy : un export ≤ schéma 3 n'a qu'un `plan`
+     unique → il met à jour les repas du menu actif. */
+  if(Array.isArray(imp.plansAlim) && imp.plansAlim.length){
+    const map={}; (etat.plansAlim||[]).forEach(p=>map[p.id]=p);
+    imp.plansAlim.forEach(p=>{ if(p && p.id && Array.isArray(p.repas)) map[p.id]=p; });
+    etat.plansAlim = Object.values(map);
+  } else if(Array.isArray(imp.plan) && imp.plan.length){
+    const actif = (etat.plansAlim||[]).find(p=>p.id===etat.planAlimActif) || (etat.plansAlim||[])[0];
+    if(actif) actif.repas = imp.plan;
+  }
+  if(typeof imp.planAlimActif==='string' && (etat.plansAlim||[]).some(p=>p.id===imp.planAlimActif)) etat.planAlimActif = imp.planAlimActif;
 
   /* repas du jour : fusion OR (coché sur un appareil = coché) */
   if(imp.repas && imp.repas.jour === jourLocal()){
@@ -63,6 +72,14 @@ export function fusionnerEtat(etat, imp){
       etat.courses.items = Object.values(map);
     }
     Object.keys(imp.courses.coches||{}).forEach(k=>{ if(imp.courses.coches[k]) etat.courses.coches[k]=true; });
+  }
+
+  /* aliments perso (E2) : fusion par clé, l'entrant gagne (assaini ci-dessus). Permet la
+     propagation des définitions perso entre appareils (cf. validation explicite V3.4). */
+  if(imp.aliments && typeof imp.aliments === 'object' && imp.aliments.perso && typeof imp.aliments.perso === 'object'){
+    if(!etat.aliments || typeof etat.aliments !== 'object') etat.aliments = { perso:{} };
+    if(!etat.aliments.perso || typeof etat.aliments.perso !== 'object') etat.aliments.perso = {};
+    Object.assign(etat.aliments.perso, imp.aliments.perso);
   }
   return etat;
 }

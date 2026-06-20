@@ -106,6 +106,28 @@
 
   <!-- ===== ONGLET REPAS ===== -->
   <section class="onglet" id="ong-repas">
+    <!-- Multi-menus (E1) : choisir/gérer plusieurs menus (Sèche, Masse…) ; la cible et les courses suivent le menu actif -->
+    <div class="carte" id="carte-menu">
+      <div class="besoins-tete">
+        <h2>Menu</h2>
+        <button class="btn btn-2" id="btn-menu-gerer" type="button" aria-expanded="false">Gérer les menus</button>
+      </div>
+      <div class="champ">
+        <label for="menu-select">Menu actif</label>
+        <select id="menu-select"></select>
+      </div>
+      <div id="menu-gestion" class="cache">
+        <div class="champ"><label for="menu-nom">Nom du menu</label>
+          <input type="text" id="menu-nom" data-action="menu-renommer" autocomplete="off"></div>
+        <div class="perso-actions">
+          <button class="btn btn-2" id="btn-menu-nouveau" type="button">+ Nouveau</button>
+          <button class="btn btn-2" id="btn-menu-dupliquer" type="button">Dupliquer</button>
+          <button class="btn btn-danger" id="btn-menu-suppr" type="button">Supprimer</button>
+        </div>
+        <p class="note" style="margin:8px 0 0">Édite le contenu d'un menu via « Réorganiser les repas » plus bas. Chaque menu garde ses repas ; la cible et les courses suivent le menu actif.</p>
+      </div>
+    </div>
+
     <div class="carte">
       <h2>Objectif du jour</h2>
       <div class="obj-ligne">
