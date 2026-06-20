@@ -1,7 +1,9 @@
-import { jourLocal, cloneProfond, slug } from './utils.js';
-import { CLE, OBJ_DEFAUT, PLAN, PROG_DEFAUT, COURSES_DEFAUT } from './data.js';
+import { jourLocal, cloneProfond } from './utils.js';
+import { CLE, OBJ_DEFAUT } from './data.js';
 import { assainirEtat } from './sanitize.js';
 import { idbGet, idbSet } from './idb.js';
+import { etatParDefaut } from './defaults.js';
+import { migrer } from './migrations.js';
 
 /* ================= ÉTAT & PERSISTANCE =================
    Source unique de vérité en mémoire (`this.etat`).
@@ -59,32 +61,48 @@ export class Store extends EventTarget {
     /* on ne fait jamais confiance à ce qui est déjà en stockage : purge des formes invalides
        AVANT les défauts, pour qu'une collection vidée soit re-remplie par défaut juste après */
     assainirEtat(this.etat);
-    /* migrations / valeurs par défaut pour les anciens enregistrements */
+    migrer(this.etat);            /* versionnement de schéma (cadre des évolutions de forme) */
+    this._appliquerDefauts();     /* comble les champs manquants/invalides depuis la fabrique unique */
+  }
+
+  /* valeurs par défaut pour les anciens enregistrements : ne remplace QUE ce qui est
+     absent ou invalide, en puisant dans la fabrique unique etatParDefaut() — même
+     source que reinitialiser(), pour qu'ils ne puissent jamais diverger (cf. T1). */
+  _appliquerDefauts(){
+    const def = etatParDefaut();
     const etat = this.etat;
-    if(!Array.isArray(etat.poids)) etat.poids = [];
-    if(!Array.isArray(etat.mensurations)) etat.mensurations = [];
-    if(typeof etat.objectifKcal !== 'number') etat.objectifKcal = OBJ_DEFAUT;
-    if(!etat.repas || typeof etat.repas !== 'object') etat.repas = { jour: jourLocal(), coches: {} };
+    if(typeof etat.schema !== 'number') etat.schema = def.schema;
+    if(!Array.isArray(etat.poids)) etat.poids = def.poids;
+    if(!Array.isArray(etat.mensurations)) etat.mensurations = def.mensurations;
+    if(typeof etat.objectifKcal !== 'number') etat.objectifKcal = def.objectifKcal;
+    if(!etat.repas || typeof etat.repas !== 'object') etat.repas = def.repas;
     if(!etat.repas.coches) etat.repas.coches = {};
     /* planJour : déplacements d'aliments valables seulement aujourd'hui (sinon null).
        Réinitialisé à minuit comme les cochages (cf. resetSiNouveauJour). */
     if(!Array.isArray(etat.repas.planJour)) etat.repas.planJour = null;
     /* plan nutritionnel ÉDITABLE (déplacement d'aliments entre repas). Défaut = PLAN de référence. */
-    if(!Array.isArray(etat.plan) || !etat.plan.length) etat.plan = cloneProfond(PLAN);
+    if(!Array.isArray(etat.plan) || !etat.plan.length) etat.plan = def.plan;
     /* nouveaux modules : journal repas, muscu, courses */
-    if(!Array.isArray(etat.journalRepas)) etat.journalRepas = [];
-    if(!Array.isArray(etat.programmes) || !etat.programmes.length) etat.programmes = cloneProfond(PROG_DEFAUT);
+    if(!Array.isArray(etat.journalRepas)) etat.journalRepas = def.journalRepas;
+    if(!Array.isArray(etat.programmes) || !etat.programmes.length) etat.programmes = def.programmes;
     this._migrerMcGill(etat);   /* l'ancien « Circuit McGill big 3 » devient 3 gainages distincts */
     if(!etat.programmeActif || !etat.programmes.some(p=>p.id===etat.programmeActif)) etat.programmeActif = etat.programmes[0].id;
-    if(!Array.isArray(etat.seances)) etat.seances = [];
-    if(!etat.courses || typeof etat.courses !== 'object') etat.courses = { items:[], coches:{}, maj:null };
-    if(!Array.isArray(etat.courses.items) || !etat.courses.items.length)
-      etat.courses.items = COURSES_DEFAUT.map(c=>({id:slug(c.nom), ...c}));
+    if(!Array.isArray(etat.seances)) etat.seances = def.seances;
+    if(!etat.courses || typeof etat.courses !== 'object') etat.courses = def.courses;
+    if(!Array.isArray(etat.courses.items) || !etat.courses.items.length) etat.courses.items = def.courses.items;
     if(!etat.courses.coches) etat.courses.coches = {};
     if(typeof etat.courses.jours !== 'number') etat.courses.jours = 7;   /* horizon de la liste (specs 4.3) */
     /* brouillons de séance (saisie en cours, non encore enregistrée) par id de jour */
-    if(!etat.brouillons || typeof etat.brouillons !== 'object') etat.brouillons = {};
-    if(typeof etat.autoExport !== 'boolean') etat.autoExport = false;
+    if(!etat.brouillons || typeof etat.brouillons !== 'object') etat.brouillons = def.brouillons;
+    if(typeof etat.autoExport !== 'boolean') etat.autoExport = def.autoExport;
+  }
+
+  /* remise à zéro : état vierge issu de la fabrique unique, puis persistance.
+     Corrige T1 — l'ancienne remise à zéro reconstruisait un littéral incomplet
+     (sans `plan`), ce qui faisait planter l'onglet Repas jusqu'au rechargement. */
+  reinitialiser(){
+    this.etat = etatParDefaut();
+    this.sauver();
   }
 
   /* migration : le « Circuit McGill big 3 » (une ligne, comptée en charge) est remplacé
