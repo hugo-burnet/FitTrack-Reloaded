@@ -66,5 +66,14 @@ Découpée en sous-lots livrables indépendamment, chacun testé et committé. O
 
 ---
 
-## V4 — Intelligence & Analyse (Phase 4)
-Charge (sRPE/ACWR/Foster/fitness-fatigue), scores (readiness/recovery/risk/progression/compliance), alertes, recommandations, dashboard, projection. Cf. `phase-4-surcharge-progressive.md`.
+## V4 — Intelligence & Analyse (Phase 4) — branche `v4-analyse`
+Cf. `phase-4-surcharge-progressive.md`. Livré par lots (F0 d'abord, le plus fort rendement).
+
+### F0 — Socle charge (P0) ✅ FAIT
+- [x] **Moteurs purs** : `js/charge.js` — `chargeSeance` (tonnage via `xp.xpSeance`, aucun nouvel input), `chargesParJour`, EWMA **aiguë (τ=7)** / **chronique (τ=28)**, **ACWR** + zones (`zoneAcwr` : 0,8 / 1,3 / 1,5), **monotonie & strain de Foster** (7 j), `serieCharge` (courbe), `pilotageCharge` (photo). `js/scores.js` — `scoreCompliance` (séances/prot/kcal pondérés + dégradé de confiance), `scoreRisk` (ACWR hors zone + monotonie + déclin `bilanForce`), `alerteSurcharge` / `alerteSousCharge`.
+- [x] **Dashboard** (onglet Verdict) : carte « Pilotage de la charge » — ACWR + zone colorée, scores Risque & Assiduité, ligne détail (aiguë/chronique/charge 7 j/monotonie), **alerte surcharge/sous-charge**, **courbe aiguë vs chronique** (Chart créé/mis à jour façon T2). Tout en dégradé gracieux (« données à venir » sans séances).
+- [x] **Tests** +17 (`charge.test.js`, `scores.test.js`), 205 verts. `sw.js` v25 (+ charge.js, scores.js précachés). Vérif navigateur (CDP) : ACWR 1.74 → zone risque + alerte, courbe 84 pts, scores cohérents.
+- ⏳ **sRPE** (RPE séance × durée) noté optionnel en F0 : non capté ici (charge externe = tonnage suffit pour ACWR) ; à ajouter avec F1 (champs de récup).
+
+### F1+ — à venir
+Readiness/Recovery/Progression (nécessitent sommeil/courbatures/RIR — Phase 3), fatigue Fitness-Fatigue, alertes stagnation/sous-charge avancées, recommandations (deload/volume), projection de progression, cycles & corrélations.

@@ -80,6 +80,23 @@
       <div class="sem-force" id="sem-force"></div>
     </div>
 
+    <!-- Pilotage de la charge (V4-F0) : aiguë/chronique/ACWR + scores Risk & Compliance + alerte -->
+    <div class="carte" id="carte-charge">
+      <h2>Pilotage de la charge</h2>
+      <div id="charge-alerte" class="verdict cache" style="margin-bottom:14px">
+        <div class="verdict-tampon" id="charge-alerte-t"></div>
+        <p class="verdict-expl" id="charge-alerte-e" style="margin:0"></p>
+      </div>
+      <div class="charge-grille">
+        <div class="charge-bloc"><div class="charge-lib">ACWR</div><div class="charge-val mono" id="ch-acwr">—</div><div class="charge-sub" id="ch-zone"></div></div>
+        <div class="charge-bloc"><div class="charge-lib">Risque</div><div class="charge-val mono" id="ch-risk">—</div><div class="charge-sub" id="ch-risk-sub"></div></div>
+        <div class="charge-bloc"><div class="charge-lib">Assiduité</div><div class="charge-val mono" id="ch-compliance">—</div><div class="charge-sub" id="ch-compliance-sub"></div></div>
+      </div>
+      <div class="charge-detail mono" id="ch-detail"></div>
+      <div class="graph-box"><canvas id="graph-charge"></canvas></div>
+      <p class="note">Charge = tonnage de séance (Σ charge×reps). <b>Aiguë</b> (7 j) vs <b>chronique</b> (28 j) : l'écart qui se creuse (ACWR&nbsp;>&nbsp;1,5) signale un pic à risque ; <b>0,8–1,3 = zone optimale</b>. Tout se fiabilise à mesure que tu accumules des séances.</p>
+    </div>
+
     <div class="carte">
       <div class="besoins-tete">
         <h2>L'arbre de décision</h2>

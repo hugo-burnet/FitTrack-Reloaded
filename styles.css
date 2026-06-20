@@ -708,6 +708,17 @@ input:-webkit-autofill:focus{
 .sem-val.up.bon{color:var(--ok)} .sem-val.flat{color:var(--craie)}
 .sem-sub{font-size:10.5px;color:var(--craie-2);line-height:1.2}
 .sem-force{margin-top:12px;font-size:13px;line-height:1.45;color:var(--craie-2)}
+
+/* ---------- Pilotage de la charge (V4-F0) ---------- */
+.charge-grille{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.charge-bloc{background:var(--plaque-2);border-radius:var(--r-ctl);
+  padding:10px 8px;text-align:center;display:flex;flex-direction:column;gap:3px}
+.charge-lib{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--craie-3)}
+.charge-val{font-size:24px;font-weight:700;color:var(--craie);line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.charge-sub{font-size:10.5px;color:var(--craie-2);line-height:1.2}
+.charge-sub.ok{color:var(--ok)} .charge-sub.alerte{color:var(--alerte)}
+.charge-sub.info{color:var(--info)} .charge-sub.warn{color:#d9a441}
+.charge-detail{margin:10px 0 4px;font-size:12px;color:var(--craie-2);text-align:center;font-variant-numeric:tabular-nums}
 .sem-force:empty{display:none}
 .sem-force.alerte{color:var(--craie);background:rgba(224,122,99,.10);border:1px solid rgba(224,122,99,.4);
   border-radius:var(--r-ctl);padding:10px 12px}
