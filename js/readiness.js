@@ -183,6 +183,28 @@ export function scoreProgression(seances, refISO = aujourdHui(), fenetreJours = 
   return { score, niveau, confiance, total: bf.total, hausse: bf.hausse, declin: bf.declin, prs, nbSeances };
 }
 
+/* ================= RECO DE CHARGE CONTEXTUALISÉE (D.4) =================
+   Tempère la recommandation de progression (progression.recommander) selon le feu
+   readiness du jour : on ne suggère JAMAIS de monter la charge un jour « rouge », et on
+   invite à la prudence un jour « orange ». Pur : prend la reco + le feu, renvoie une reco
+   enrichie (`noteReadiness`, `tempere`) sans perdre l'info d'origine (cible, message). */
+export function recoContextuelle(reco, feu){
+  if(!reco) return reco;
+  const base = { ...reco, tempere: false, noteReadiness: null };
+  if(feu === 'rouge'){
+    if(reco.statut === 'monter')
+      return { ...base, tempere: true, ton: 'neutre',
+        noteReadiness: 'Jour rouge (forme basse) : ne monte pas la charge aujourd\'hui. Refais la même charge proprement (ou technique/récup) — tu prendras le palier un jour vert.' };
+    return { ...base, noteReadiness: 'Jour rouge : garde de la réserve, privilégie la qualité d\'exécution.' };
+  }
+  if(feu === 'orange' && reco.statut === 'monter')
+    return { ...base, tempere: true,
+      noteReadiness: 'Jour orange : si tu montes, garde 1-2 reps en réserve et valide la technique avant de confirmer le palier.' };
+  if(feu === 'vert' && reco.statut === 'monter')
+    return { ...base, noteReadiness: 'Jour vert : c\'est le bon moment pour tenter le palier.' };
+  return base;
+}
+
 /* ================= ORCHESTRATEURS (lisent l'état, restent purs) =================
    Extraient les entrées des collections d'état et appellent les scorers. Le DOM appelle ceux-ci. */
 

@@ -4,7 +4,7 @@ import {
   chargeInterneSeance, fitnessFatigue,
   noteSommeil, noteCourbatures, noteForme, noteAcwrReadiness, noteDelai, noteFatigue,
   scoreReadiness, scoreRecovery, scoreProgression,
-  etatJourPour, delaiDerniereSeance, readinessDuJour, recoveryDuJour,
+  etatJourPour, delaiDerniereSeance, readinessDuJour, recoveryDuJour, recoContextuelle,
 } from '../js/readiness.js';
 
 /* helpers : dates + séances de tonnage contrôlé */
@@ -126,4 +126,34 @@ test('readinessDuJour : combine état du jour (frais) + charge ; périmé ignor�
 test('recoveryDuJour : sans aucune donnée → indisponible, ne lève pas', () => {
   assert.doesNotThrow(() => recoveryDuJour({}, REF));
   assert.equal(recoveryDuJour({ seances: [], etatsJour: [] }, REF).score, null);
+});
+
+/* ---- recoContextuelle (D.4) : tempère selon le feu readiness ---- */
+test('recoContextuelle : jour rouge + monter → ne pas monter, ton neutralisé, note', () => {
+  const r = recoContextuelle({ statut: 'monter', ton: 'up', message: 'Level up !' }, 'rouge');
+  assert.equal(r.tempere, true);
+  assert.equal(r.ton, 'neutre');
+  assert.match(r.noteReadiness, /rouge/i);
+  assert.equal(r.message, 'Level up !');   // info d'origine conservée
+});
+test('recoContextuelle : jour orange + monter → prudence (tempéré, ton conservé)', () => {
+  const r = recoContextuelle({ statut: 'monter', ton: 'up' }, 'orange');
+  assert.equal(r.tempere, true);
+  assert.equal(r.ton, 'up');
+  assert.match(r.noteReadiness, /orange/i);
+});
+test('recoContextuelle : jour vert + monter → encouragement, pas tempéré', () => {
+  const r = recoContextuelle({ statut: 'monter', ton: 'up' }, 'vert');
+  assert.equal(r.tempere, false);
+  assert.match(r.noteReadiness, /vert/i);
+});
+test('recoContextuelle : reco non-monter un jour rouge → note prudence, pas tempéré', () => {
+  const r = recoContextuelle({ statut: 'reps', ton: 'neutre' }, 'rouge');
+  assert.equal(r.tempere, false);
+  assert.match(r.noteReadiness, /réserve|qualité/i);
+});
+test('recoContextuelle : feu inconnu/null → reco inchangée (note nulle)', () => {
+  const r = recoContextuelle({ statut: 'monter', ton: 'up' }, 'inconnu');
+  assert.equal(r.tempere, false);
+  assert.equal(r.noteReadiness, null);
 });
