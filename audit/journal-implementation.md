@@ -219,3 +219,35 @@ purs testés d'abord, UI branchée en fin de lot. Synchro et `fusion.js` non tou
   gracieux, zéro erreur. Données semées (12 séances) → projection « +2,67 kg/sem · r² 1,00 ·
   prochaine marche +2,5 kg ≈ 7 j · +5 kg ≈ 2 sem », volume par groupe + conseils. Zéro erreur console.
 - ⏳ Reste **F3** : analyse de cycles, corrélations.
+
+---
+
+## V4 — F3 « Cycles & corrélations » (branche `v4-f3-cycles-correlations`) ✅ FAIT
+Cf. `phase-4-surcharge-progressive.md` §E.3 + §E.4. 3 sous-lots, moteurs purs testés d'abord.
+Synchro et `fusion.js` non touchés.
+
+### F3.1 — Analyse de cycles (P2 · §E.3) `js/cycles.js`
+- [x] `phasesHebdo` (accumulation +5 % / deload ≤70 % du pic récent / maintien) +
+  `compresserBlocs` ; `analyserCycles` (phase courante, semaines dans la phase, ancienneté
+  du dernier deload, nb de cycles accumulation→deload, semaines vides de tête ignorées).
+  S'appuie sur `charge.chargesHebdo`. **+8 tests.**
+
+### F3.2 — Corrélations (P2 · §E.4) `js/correlations.js`
+- [x] `correlation` (Pearson, r/n, null si <3 pts ou variance nulle) ; `interpreter` (force) ;
+  `decrireCorrelation` (insight lisible, sensible au signe). Builders : sommeil↔courbatures,
+  volume séance↔1RM estimé (par exercice), kcal hebdo↔Δ poids sem. suivante.
+  `correlationsDisponibles` n'expose que les relations ≥5 points, triées par |r|. **+10 tests.**
+
+### F3.3 — UI + vérifs finales
+- [x] **Verdict** : carte « Cycles d'entraînement » (`#carte-cycles` : strip hebdo coloré par
+  phase + résumé) + carte « Corrélations » (`#carte-correlations` : relations exploitables
+  + nuage de points de la plus forte, scatter Chart.js). CSS dédié (cycles-strip/cyc-*, cor-*).
+- [x] **316 → 334 tests verts** (+18). Graphe d'imports OK (42 modules). HTTP 200.
+  **`sw.js` v34 → v35** (+ `cycles.js`, `correlations.js` précachés).
+- [x] **Vérif navigateur** (Chromium CDP, **cache désactivé**) : état vide en dégradé gracieux ;
+  données semées → cycles (12 semaines, phases colorées) et corrélations (Volume→1RM r=1,00 ;
+  Sommeil→courbatures r=−1,00 + nuage). Zéro erreur console.
+
+**Phase 4 (V4 F0→F3) entièrement livrée.** Le pilotage de charge, la récupération/readiness,
+les recommandations (deload, volume, reco contextualisée, projection) et l'analyse (cycles,
+corrélations) sont en place, tous en moteurs purs testés et en dégradé gracieux.

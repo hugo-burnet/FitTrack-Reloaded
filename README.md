@@ -23,6 +23,8 @@ L'arbre est **paramétré par ton objectif** (sèche / recompo / prise de masse)
 
 **Recommandations (surcharge progressive)** : une **semaine d'allègement (deload)** est proposée quand trois signaux convergent — charge hebdo qui monte depuis plusieurs semaines, fatigue installée (forme négative ou ACWR hors zone) **et** progression à l'arrêt. Une carte **« Volume par groupe musculaire »** compte tes **séries de travail/semaine** par groupe (déduit du nom d'exercice) et signale les groupes **sous- ou sur-dosés** face au repère hypertrophie (10-20 séries/sem).
 
+**Cycles & corrélations** : une carte **« Cycles d'entraînement »** déduit ta **périodisation réelle** de la charge hebdo (blocs d'accumulation / deload / maintien, phase courante, nombre de cycles). Une carte **« Corrélations »** croise tes données pour révéler tes leviers (sommeil ↔ courbatures, volume ↔ 1RM, kcal ↔ variation de poids) — coefficient de Pearson lu en clair + nuage de points, exposé seulement quand il y a assez de relevés.
+
 Sous le verdict, un read **« Cette semaine »** entre deux verdicts mensuels : tendance lissée, **adhérence protéines (jours à la cible / 7)** et **séances sur 7 j**, plus une alerte **« force en baisse »** quand le 1RM estimé décroche sur plusieurs exercices récents — signal précoce de sous-alimentation.
 
 ### 🍽️ Repas
@@ -83,7 +85,7 @@ Sur **GitHub Pages**, aucune manipulation : les modules ES sont servis en HTTP, 
 
 ## Tests
 
-Les moteurs purs sont couverts par des tests unitaires (**316 tests**), via le **runner natif de Node** — aucune dépendance à installer :
+Les moteurs purs sont couverts par des tests unitaires (**334 tests**), via le **runner natif de Node** — aucune dépendance à installer :
 
 ```bash
 npm test          # ou : node --test
@@ -103,6 +105,8 @@ Cibles :
 - `readiness.js` — sRPE (Foster), fitness-fatigue (Banister), scores Readiness / Recovery / Progression, reco contextualisée.
 - `projection.js` — régression e1RM, pente kg/sem, ETA d'un objectif + bande d'incertitude.
 - `volume.js` — groupe musculaire (heuristique), volume hebdo de séries par groupe vs repères.
+- `cycles.js` — périodisation réelle (accumulation / deload / maintien) depuis la charge hebdo.
+- `correlations.js` — Pearson + relations (sommeil/volume/kcal) lues en clair.
 - `bilan.js` — `adherenceHebdo`, `bilanForce`. · `xp.js` — XP, niveaux, gating de progression.
 - `migrations.js` / `sanitize.js` / `defaults.js` / `fusion.js` — schéma 1→7, assainissement, fusion par date/id/clé.
 - `RepasModule` — moteur de comblement protéique.
@@ -151,6 +155,8 @@ js/
   readiness.js        récup & readiness (fitness-fatigue, Readiness/Recovery/Progression, reco contextualisée)
   projection.js       projection de progression (régression e1RM, ETA + incertitude)
   volume.js           volume par groupe musculaire vs repères 10-20 séries/sem
+  cycles.js           cycles d'entraînement (accumulation/deload/maintien)
+  correlations.js     corrélations (Pearson) entre sommeil/volume/kcal et résultats
   bilan.js            reads hebdo (adhérence, signal de force)
   charts.js           config Chart.js partagée
   RestTimer.js        chrono de repos
