@@ -142,3 +142,40 @@ Livré en 4 sous-lots committables, moteurs purs testés d'abord.
 - **205 → 228 tests verts.** `sw.js` v27.
 - ⏳ Reste F2+ : deload auto, ajustement de volume, reco contextualisée, projection de
   progression, cycles & corrélations.
+
+---
+
+## Passe hygiénique — moteurs purs (branche `hygiene-moteurs`) ✅ FAIT
+ISO-FONCTIONNEL : on n'éclate pas le comportement, on déplace la **logique métier** des
+gros modules vers des fonctions pures testées ; les modules ne gardent que DOM/événements/
+persistance. **Synchro et `fusion.js` non touchés.** Méthode par fonction : extraire → test
+qui la fige → rebrancher le module → `npm test` vert.
+
+### Lot 1 — `js/repas-logique.js` (extrait de `RepasModule`, 1117 → 1085 l.)
+- [x] `qteAjustee` (quantité flex ajustée à l'objectif, arrondi 5 g) ; `macrosRepas` (5 macros
+  d'un repas, **remplace** `repasKcal/Prot/Gluc/Lip/Fib`).
+- [x] `entreesDuJour` / `extras` / `consomme` (agrégation du journal, legacy-safe) ;
+  `entreeJournalRepas` (construction d'une entrée de repas coché).
+- [x] `deplacerAliment` (déplacement entre repas, réorganisation) ; `suggestionsProteine`
+  (comblement du déficit) ; `supprimerMenu` (CRUD menu avec garde-fou « au moins un »).
+- [x] CRUD menus restant (nouveau/dupliquer/renommer/changer) laissé en glue triviale
+  (id-gen + clone + persist) : pas de logique testable à extraire.
+- **+17 tests** (`tests/repas-logique.test.js`). Imports morts retirés (`facteurFlex`, `protCible`).
+
+### Lot 2 — `js/muscu-perf.js` (extrait de `MuscuModule`, 770 → 647 l.)
+- [x] `dernierePerf` / `perfPrecedente` / `historiqueExo` / `tousLesExos` (lecture de l'historique).
+- [x] `fmtPerf` (formatage charges droites/variables, gainage en temps).
+- [x] `brouillonDerniere` (préremplissage « comme la dernière fois ») ; `permuterExo`
+  (réordonnancement exo + brouillon en phase).
+- [x] `construireRecap` (deltas vs occurrence précédente + XP/niveau) ; `serieProgression`
+  (points 1RM/temps + volume + **tendance** par point ; le module ne fait plus que dessiner).
+- **+17 tests** (`tests/muscu-perf.test.js`). Imports morts retirés (`e1rm`, `meilleureCharge`,
+  `meilleurTemps`, `tempsSousTension`, `parseFourchette`, `xpGagneExercice`, `niveauPourXp`).
+
+### Vérifs finales
+- **244 → 278 tests verts** (+34). Graphe d'imports résolu (38 modules, Node). HTTP 200 sur
+  l'app et les 2 nouveaux fichiers. **`sw.js` v32 → v33** (+ `repas-logique.js`, `muscu-perf.js`
+  précachés). Vérif navigateur (Chromium CDP, **cache désactivé**) : onglets Repas (cartes repas
+  rendues, cible `0 / 2545 kcal`) et Muscu (formulaire de séance rendu sur sélection d'un jour),
+  **zéro erreur console**.
+- Zéro dépendance, JS vanilla, offline-first conservés.
