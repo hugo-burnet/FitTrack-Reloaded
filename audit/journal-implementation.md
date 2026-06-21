@@ -317,7 +317,14 @@ corrélations) sont en place, tous en moteurs purs testés et en dégradé graci
   `repas-logique.test.js` (+4 : qteAjustee non-flex bouge en généré, **cible == somme des repas**
   sur toute la plage du stepper, journal rééchelonné), `sanitize.test.js` (+1, flag booléen),
   `fusion.test.js` (+1, flag voyage par id). **356 → 368 tests verts.**
-- [x] `sw.js` v37 → v38. Vérif navigateur (CDP, cache désactivé) : menu généré → cible
-  protéines 115→185 g (gluc/lip/fib suivent aussi) quand l'objectif passe 2000→3000 ; menu fixe
-  → protéines 109→115 g (seul le flex riz bouge), comportement historique intact ; notes
-  dynamiques OK ; zéro erreur console.
+- [x] **Courses alignées** : `consoQuotidienne` gagne `(aliments, genere)` — en mode généré, la
+  conso/jour rééchelonne TOUS les aliments du facteur global (mêmes arrondis que `qteAjustee`),
+  catalogue injectable. `CoursesModule` (`estGenere()`/`cat()`) dérive les quantités via le bon
+  mode ; `formatQteCourse` résout aussi les aliments perso. La liste de courses suit donc le menu
+  généré comme l'onglet Repas. **+2 tests** (`consoQuotidienne` généré = portions du menu ;
+  garde-fou ISO du flex).
+- [x] **356 → 370 tests verts.** `sw.js` v37 → v38. Vérif navigateur (CDP, cache désactivé) :
+  Repas — menu généré → cible protéines 115→185 g (gluc/lip/fib suivent aussi) quand l'objectif
+  passe 2000→3000 ; menu fixe → 109→115 g (seul le flex riz bouge), historique intact ; notes
+  dynamiques OK. Courses — menu généré → poulet 2,4→2,5 kg & riz 1,6→1,7 kg suivent l'objectif ;
+  menu fixe → poulet figé (flex seul). Zéro erreur console.

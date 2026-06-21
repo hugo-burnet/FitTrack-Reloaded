@@ -134,6 +134,28 @@ test('macrosCible (genere) : TOUTES les macros suivent l\'objectif (pas seulemen
   assert.ok(haut.lip > bas.lip);
 });
 
+test('consoQuotidienne (genere) : TOUS les aliments suivent l\'objectif (= portions du menu)', () => {
+  const bas  = consoQuotidienne(1700, MENU, ALIMENTS, true);
+  const haut = consoQuotidienne(2800, MENU, ALIMENTS, true);
+  // le poulet (non-flex) grossit avec l'objectif en mode généré, contrairement au flex
+  assert.ok(haut.poulet > bas.poulet, 'poulet doit suivre l\'objectif en mode généré');
+  assert.ok(haut.riz > bas.riz);
+  // cohérence : la conso/jour = la somme des qteAjustee du menu rééchelonné
+  for(const cle of ['poulet','riz','oeuf','patate-douce']){
+    const attendu = MENU.reduce((s,r)=>s + r.items.filter(([c])=>c===cle).reduce((a,[,q])=>{
+      const f = facteurMenu(2800, MENU); const pas = ALIMENTS[cle].unite!==undefined?1:5;
+      return a + Math.max(pas, Math.round(q*f/pas)*pas);
+    },0), 0);
+    assert.equal(haut[cle], attendu, `conso ${cle}`);
+  }
+});
+
+test('consoQuotidienne (genere=false) : flex inchangé (poulet figé, riz suit) — ISO', () => {
+  const bas = consoQuotidienne(1700, MENU), haut = consoQuotidienne(2800, MENU);
+  assert.equal(bas.poulet, haut.poulet);   // non-flex figé en mode plan fixe
+  assert.ok(haut.riz > bas.riz);            // flex suit
+});
+
 test('macrosCible (genere) : kcal du menu rééchelonné ≈ objectif sur la plage non saturée', () => {
   const k = kcalMenu();
   for(let obj = Math.ceil(k*MENU_MIN); obj <= Math.floor(k*MENU_MAX); obj += 50){

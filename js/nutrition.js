@@ -126,12 +126,24 @@ export function macrosCible(objectifKcal, plan = PLAN, aliments = ALIMENTS, gene
   return { prot:Math.round(prot), gluc:Math.round(gluc), lip:Math.round(lip), fib:Math.round(fib) };
 }
 
-/* consommation quotidienne par aliment, dérivée du plan (flex ajusté à l'objectif).
-   Sert à calculer une liste de courses « plan × jours » (specs 4.3) : ferme la boucle
-   plan → conso → liste, et se met à jour avec l'objectif kcal. Renvoie {cle: qté/jour}. */
-export function consoQuotidienne(objectifKcal, plan = PLAN){
-  const f = facteurFlex(objectifKcal, plan);
+/* consommation quotidienne par aliment, dérivée du plan. Sert à calculer une liste de courses
+   « plan × jours » (specs 4.3) : ferme la boucle plan → conso → liste, et se met à jour avec
+   l'objectif kcal. Renvoie {cle: qté/jour}. Deux modes (mêmes arrondis que qteAjustee) :
+   - plan fixe (genere=false) : seul le flex (riz/avoine) suit l'objectif ;
+   - menu généré (genere=true) : TOUS les aliments suivent le facteur global. Catalogue
+     injectable (un menu généré peut contenir des aliments perso). */
+export function consoQuotidienne(objectifKcal, plan = PLAN, aliments = ALIMENTS, genere = false){
   const out = {};
+  if(genere){
+    const f = facteurMenu(objectifKcal, plan, aliments);
+    plan.forEach(r=>r.items.forEach(([cle,q])=>{
+      const a = aliments[cle]; if(!a) return;
+      const pas = a.unite!==undefined ? 1 : 5;
+      out[cle] = (out[cle]||0) + Math.max(pas, Math.round(q*f/pas)*pas);
+    }));
+    return out;
+  }
+  const f = facteurFlex(objectifKcal, plan);
   plan.forEach(r=>r.items.forEach(([cle,q])=>{
     const qte = ALIMENTS[cle].flex ? Math.round(q*f/5)*5 : q;   /* même arrondi que qteAjustee */
     out[cle] = (out[cle]||0) + qte;

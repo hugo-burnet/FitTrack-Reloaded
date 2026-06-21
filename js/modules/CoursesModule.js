@@ -1,7 +1,8 @@
 import { $, echap, slug, jourLocal } from '../utils.js';
 import { ALIMENTS, COURSES_DEFAUT } from '../data.js';
 import { consoQuotidienne } from '../nutrition.js';
-import { repasActifs } from '../plans.js';
+import { catalogue } from '../catalogue.js';
+import { repasActifs, menuActif } from '../plans.js';
 import { toast } from '../ui.js';
 
 /* ================= LISTE DE COURSES ================= */
@@ -19,12 +20,18 @@ export class CoursesModule {
   get etat(){ return this.store.etat; }
   joursCourse(){ const j = this.etat.courses.jours; return (typeof j==='number' && j>0) ? j : 7; }
 
+  /* catalogue fusionné base+perso : le menu actif peut contenir des aliments perso (menu généré) */
+  cat(){ return catalogue((this.etat.aliments && this.etat.aliments.perso) || {}); }
+  /* le menu actif a-t-il été généré/ajusté ? → conso rééchelonne tout le menu (cf. RepasModule) */
+  estGenere(){ const m = menuActif(this.etat); return !!(m && m.genere); }
+
   /* aliment lié à un article (champ explicite ou mapping par id) */
   cleArticle(it){ return it.cle || this.cleParId[it.id] || null; }
 
-  formatQteCourse(cle, total){
+  formatQteCourse(cle, total, aliments = ALIMENTS){
     total = Math.round(total);
-    const a = ALIMENTS[cle];
+    const a = aliments[cle] || ALIMENTS[cle];
+    if(!a) return `${total}`;
     if(a.unite!==undefined){
       const u = a.unite || 'unité';
       return `${total} ${u}${(total>1 && a.unite)?'s':''}`.trim();
@@ -60,8 +67,11 @@ export class CoursesModule {
     const jours = this.joursCourse();
     const ji = $('courses-jours');
     if(ji && document.activeElement!==ji) ji.value = jours;
-    /* quantités dérivées du plan, recalculées à chaque rendu (suit l'objectif kcal) */
-    const conso = consoQuotidienne(this.etat.objectifKcal, repasActifs(this.etat));
+    /* quantités dérivées du plan, recalculées à chaque rendu (suit l'objectif kcal).
+       Menu généré → échelle globale + catalogue base+perso ; plan fixe → flex riz/avoine. */
+    const genere = this.estGenere();
+    const cat = genere ? this.cat() : ALIMENTS;
+    const conso = consoQuotidienne(this.etat.objectifKcal, repasActifs(this.etat), cat, genere);
 
     const liste = $('courses-liste');
     const items = this.etat.courses.items;
@@ -74,7 +84,7 @@ export class CoursesModule {
         const rows = items.filter(it=>it.cat===cat).map(it=>{
           const pris = !!this.etat.courses.coches[it.id];
           const cle = this.cleArticle(it);
-          const derive = cle && conso[cle] ? this.formatQteCourse(cle, conso[cle]*jours) : null;
+          const derive = cle && conso[cle] ? this.formatQteCourse(cle, conso[cle]*jours, cat) : null;
           const qteAff = derive!=null ? derive : (it.qte||'');
           return `<div class="course-item${pris?' pris':''}" role="button" tabindex="0" aria-pressed="${pris}"
              data-action="toggle-course" data-id="${echap(it.id)}">
