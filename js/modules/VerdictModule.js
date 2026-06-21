@@ -7,12 +7,14 @@ import { pilotageCharge, serieCharge } from '../charge.js';
 import { scoreRisk, scoreCompliance, alerteSurcharge, alerteSousCharge, alerteStagnation } from '../scores.js';
 import { readinessDuJour, recoveryDuJour, scoreProgression, etatJourPour, deloadDuJour } from '../readiness.js';
 import { volumeParGroupe } from '../volume.js';
+import { analyserCycles } from '../cycles.js';
+import { correlationsDisponibles } from '../correlations.js';
 import { optCommun } from '../charts.js';
 
 /* ================= VERDICT : l'arbre de décision (rendu) ================= */
 export class VerdictModule {
   constructor(store, app){
-    this.store = store; this.app = app; this.chCharge = null;
+    this.store = store; this.app = app; this.chCharge = null; this.chCorrelation = null;
     /* saisie de la récup du jour (V4-F1) → écrit etat.etatsJour puis re-rend */
     const save = $('recup-save');
     if(save) save.addEventListener('click', () => this.enregistrerRecup());
@@ -55,6 +57,62 @@ export class VerdictModule {
     this.renderCharge();
     this.renderDeload();
     this.renderVolume();
+    this.renderCycles();
+    this.renderCorrelations();
+  }
+
+  /* ---- cycles d'entraînement (V4-F3) : strip hebdo coloré par phase + résumé ---- */
+  renderCycles(){
+    const strip = $('cycles-strip'), resume = $('cycles-resume');
+    if(!strip || !resume) return;
+    const c = analyserCycles(this.etat.seances);
+    if(!c.hebdo.length){
+      strip.innerHTML = '';
+      resume.textContent = 'Pas encore de séance pour repérer tes cycles d\'entraînement.';
+      return;
+    }
+    const max = Math.max(...c.hebdo.map(w => w.charge), 1);
+    strip.innerHTML = c.hebdo.map((w, i) => {
+      const h = Math.round(6 + (w.charge / max) * 42);
+      const ph = c.phases[i];
+      return `<span class="cyc-bar cyc-${ph}" style="height:${h}px" title="${fmtDate(w.finSemaine)} · charge ${Math.round(w.charge)} · ${ph}"></span>`;
+    }).join('');
+    const libPhase = { accumulation: 'accumulation', deload: 'deload (allègement)', maintien: 'maintien', demarrage: 'démarrage' }[c.phaseActuelle] || c.phaseActuelle;
+    let txt = `Phase actuelle : ${libPhase} (${c.semainesDansPhase} sem) · ${c.nbCycles} cycle${c.nbCycles > 1 ? 's' : ''} terminé${c.nbCycles > 1 ? 's' : ''}`;
+    if(c.semainesDepuisDeload != null) txt += ` · dernier deload il y a ${c.semainesDepuisDeload} sem`;
+    resume.textContent = txt + '.';
+  }
+
+  /* ---- corrélations (V4-F3) : relations exploitables + nuage de la plus parlante ---- */
+  renderCorrelations(){
+    const liste = $('correlations-liste'); if(!liste) return;
+    const cors = correlationsDisponibles(this.etat);
+    if(!cors.length){
+      liste.innerHTML = '<p class="note" style="margin:0">Pas encore assez de données croisées (sommeil, volume, kcal) pour des corrélations fiables — continue à renseigner ta récup et tes séances.</p>';
+      this.dessinerCorrelation(null);
+      return;
+    }
+    liste.innerHTML = cors.map(c =>
+      `<div class="cor-ligne"><div class="cor-haut"><span class="cor-titre">${echap(c.titre)}</span>`
+      + `<span class="cor-r mono ${c.r < 0 ? 'down' : 'up'}">r = ${c.r.toFixed(2)} · ${c.interpretation}</span></div>`
+      + `<div class="cor-insight">${echap(c.insight)} <span class="cor-n">(${c.n} relevés)</span></div></div>`).join('');
+    this.dessinerCorrelation(cors[0]);   /* nuage de la corrélation la plus forte */
+  }
+
+  dessinerCorrelation(cor){
+    const ctx = $('graph-correlation'); if(!ctx) return;
+    if(this.chCorrelation){ this.chCorrelation.destroy(); this.chCorrelation = null; }
+    if(!cor){ ctx.style.display = 'none'; return; }
+    ctx.style.display = '';
+    this.chCorrelation = new Chart(ctx, {
+      type: 'scatter',
+      data: { datasets: [{ label: cor.titre, data: cor.points.map(p => ({ x: p.x, y: p.y })),
+        backgroundColor: '#4d7ef0', borderColor: '#4d7ef0', pointRadius: 4 }] },
+      options: { ...optCommun, scales: {
+        x: { ...optCommun.scales.x, title: { display: true, text: cor.xlabel, color: '#9aa1ab' } },
+        y: { ...optCommun.scales.y, title: { display: true, text: cor.ylabel, color: '#9aa1ab' } },
+      } },
+    });
   }
 
   /* ---- deload détecté (V4-F2) : semaine d'allègement quand charge↑ + fatigue + plateau ---- */

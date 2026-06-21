@@ -5,7 +5,7 @@
    un correctif se propage à la visite suivante sans bump manuel de version.
    L'API GitHub (données + token) n'est JAMAIS interceptée → toujours réseau direct. */
 
-const VERSION = 'v34';
+const VERSION = 'v35';
 const CACHE = `carnet-recompo-${VERSION}`;
 
 /* coquille précachée — tout en relatif (résolu contre l'emplacement du SW, donc OK
@@ -19,7 +19,7 @@ const SHELL = [
   './js/data/aliments-base.js', './js/data/generateur-pool.js', './js/catalogue.js', './js/plans.js', './js/generateur.js',
   './js/defaults.js', './js/migrations.js', './js/besoins.js',
   './js/charts.js', './js/stats.js', './js/progression.js', './js/xp.js', './js/verdict.js', './js/bilan.js', './js/RestTimer.js',
-  './js/charge.js', './js/scores.js', './js/readiness.js', './js/projection.js', './js/volume.js',
+  './js/charge.js', './js/scores.js', './js/readiness.js', './js/projection.js', './js/volume.js', './js/cycles.js', './js/correlations.js',
   './js/modules/MesuresModule.js', './js/modules/VerdictModule.js', './js/modules/RepasModule.js',
   './js/modules/MuscuModule.js', './js/modules/CoursesModule.js', './js/modules/DonneesModule.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
