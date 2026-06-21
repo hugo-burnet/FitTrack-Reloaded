@@ -207,7 +207,11 @@
         <label class="gen-facile"><input type="checkbox" id="gen-facile"> Plats faciles uniquement <span class="gen-facile-sub">(zéro prépa · cuiseur à riz · airfryer)</span></label>
         <p class="note" style="margin-bottom:6px">Touche un aliment : 1 tap = <span class="gen-leg aime">j'aime</span>, 2 taps = <span class="gen-leg evite">à éviter</span>, 3 taps = neutre. Laisse vide pour un menu par défaut.</p>
         <div id="gen-prefs"></div>
-        <button class="btn" id="btn-gen-lancer" type="button">Générer mon menu</button>
+        <div class="gen-actions">
+          <button class="btn" id="btn-gen-lancer" type="button">Générer un nouveau menu</button>
+          <button class="btn btn-2" id="btn-gen-ajuster" type="button">Ajuster le menu actuel</button>
+        </div>
+        <p class="note" style="margin:6px 0 0"><b>Générer</b> crée un menu neuf à partir de tes goûts. <b>Ajuster</b> garde le menu actif tel quel et corrige seulement ses portions.</p>
         <div id="gen-resultat"></div>
       </div>
     </div>

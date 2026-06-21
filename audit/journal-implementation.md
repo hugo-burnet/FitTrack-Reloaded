@@ -80,13 +80,19 @@ ex. recompo 72,5 kg, cible 145 g mais menu ≈ 197 g) et les kcal saturent hors 
 - [x] **État** (migration **schéma 6→7**) : `etat.preferencesAlim = {aimes[], evites[], faciliteSeulement}`
   (defaults + Store + `assainirPreferencesAlim`). `appliquerBesoins` stockait déjà `objectif.cibleMacros`.
   **+3 tests**.
+- [x] **Ajustement en place** : `ajusterMenu(repas, cibles, aliments)` partage le solveur (refondu
+  par entrées → gère les clés dupliquées + catalogue perso injectable). Garde la composition du
+  menu, rééchelonne seulement les portions. Corrige la sur-livraison de protéines des menus fixes
+  (ex. plan historique : 197 → 147 g) ; signale honnêtement les macros non atteignables (bornes).
+  **+4 tests**.
 - [x] **UI** (onglet Repas, sous le calculateur) : carte « Générer un menu » — cible affichée,
   goûts en chips par rôle (1 tap j'aime / 2 à éviter / 3 neutre), bascule « faciles uniquement »,
-  bouton → crée un **nouveau menu « <Objectif> auto »** et l'active, aperçu macros atteintes vs cible.
+  **« Générer un nouveau menu »** (crée « <Objectif> auto » et l'active) **ou « Ajuster le menu
+  actuel »** (corrige le menu actif en place), aperçu macros atteintes vs cible.
 - [x] **Sync des goûts** : `fusion.js` étendu (union des aimés/évités entre appareils, l'évité
   gagne, faciliteSeulement à l'entrant ; validé le 2026-06-21). Les menus générés se propagent
   déjà via `plansAlim`. **+1 test** (`fusion.test.js`).
-- **228 → 240 tests verts.** `sw.js` v30 (+ generateur.js, generateur-pool.js précachés).
+- **228 → 244 tests verts.** `sw.js` v31 (+ generateur.js, generateur-pool.js précachés).
 - Vérif navigateur (CDP, cache désactivé) : profil → cible, « j'aime poulet » pris en compte,
   Générer → menu créé/activé, macros à ±2 g de la cible, zéro erreur console.
 - ⏳ Pistes : étendre le pool, Q&A guidée (allergies/régimes), corriger aussi les menus
