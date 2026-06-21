@@ -16,6 +16,14 @@ test('fusion : pesées réconciliées par date, l\'entrant gagne sur collision',
                    [['2026-01-01',80],['2026-01-02',78],['2026-01-03',77]]);
 });
 
+test('fusion : état du jour réconcilié par date, l\'entrant gagne sur collision', () => {
+  const etat = etatParDefaut();
+  etat.etatsJour = [{date:'2026-06-19',sommeil:7,courbatures:2},{date:'2026-06-20',sommeil:6,courbatures:5}];
+  fusionnerEtat(etat, { etatsJour:[{date:'2026-06-20',sommeil:8,courbatures:1},{date:'2026-06-21',sommeil:7.5,courbatures:0}] });
+  assert.deepEqual(etat.etatsJour.map(e=>[e.date,e.sommeil,e.courbatures]),
+                   [['2026-06-19',7,2],['2026-06-20',8,1],['2026-06-21',7.5,0]]);
+});
+
 test('fusion : séances par date+jourId (remplace l\'existant, ajoute les nouvelles)', () => {
   const etat = etatParDefaut();
   etat.seances = [{date:'2026-01-01', jourId:'push', exercices:[{nom:'A',series:[{charge:1,reps:1}]}]}];

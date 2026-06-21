@@ -21,6 +21,10 @@ export function fusionnerEtat(etat, imp){
   if(Array.isArray(imp.poids)) etat.poids = fusionDate(etat.poids, imp.poids);
   if(Array.isArray(imp.mensurations)) etat.mensurations = fusionDate(etat.mensurations, imp.mensurations);
 
+  /* état du jour (V4-F1) : récup quotidienne (sommeil/courbatures), fusion par `date`
+     (l'entrant gagne sur collision), comme pesées/mensurations. Extension validée le 2026-06-21. */
+  if(Array.isArray(imp.etatsJour)) etat.etatsJour = fusionDate(etat.etatsJour, imp.etatsJour);
+
   /* objectif kcal : l'entrant gagne s'il est présent */
   if(typeof imp.objectifKcal === 'number') etat.objectifKcal = imp.objectifKcal;
 

@@ -82,9 +82,9 @@ Livré en 4 sous-lots committables, moteurs purs testés d'abord.
   `assainirEtatsJour`). Champs d'effort de séance `duree`(min)/`rpe`(0-10) **optionnels**,
   bornés dans `assainirSeance` — ajoutés aux séances **sans migration** : ils voyagent déjà
   via la fusion (séances fusionnées par date+jourId, objet entier) → **`fusion.js` inchangé**.
-  ⚠ `etatsJour` (collection nouvelle) **n'est pas encore synchronisée** : son ajout à
-  `fusion.js` exige une validation explicite (cf. contrainte absolue). Local-only en attendant
-  (dégradé gracieux : les scores se calculent localement). **+5 tests**.
+  `etatsJour` **synchronisé** : extension de `fusion.js` (fusion par `date`, l'entrant gagne,
+  comme pesées/mensurations) **validée explicitement le 2026-06-21**. **+5 tests** (capture)
+  **+1** (fusion). `sw.js` v27.
 - [x] **F1.2 — Moteurs** `js/readiness.js` (purs) : `chargeInterneSeance` (sRPE Foster = RPE×durée),
   `fitnessFatigue` (Banister, **réutilise les EWMA de charge.js** : fitness=chronique, fatigue=aiguë,
   forme=TSB), notes élémentaires 0-1 (sommeil/courbatures/forme/ACWR/délai/fatigue),
@@ -99,6 +99,8 @@ Livré en 4 sous-lots committables, moteurs purs testés d'abord.
   jour, feu + reco readiness, jauges Readiness/Récup/Progression, alerte stagnation) ;
   onglet Muscu, champs **Durée/RPE** optionnels (brouillon + séance). Vérif navigateur (CDP,
   cache désactivé) : readiness 95 feu vert après saisie, champs présents, zéro erreur console.
-- **205 → 227 tests verts.** `sw.js` v26.
+- [x] **F1.5 — Sync `etatsJour`** : `fusion.js` étendu (fusion par `date`, l'entrant gagne ;
+  validé le 2026-06-21) → propagation de la récup entre appareils. **+1 test** (`fusion.test.js`).
+- **205 → 228 tests verts.** `sw.js` v27.
 - ⏳ Reste F2+ : deload auto, ajustement de volume, reco contextualisée, projection de
-  progression, cycles & corrélations. Sync de `etatsJour` (extension `fusion.js`) à valider.
+  progression, cycles & corrélations.
