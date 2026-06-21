@@ -263,7 +263,14 @@ export class MuscuModule {
 
     const draft = this.etat.brouillons[jour.id];
     const dateVal = draft && draft.date ? draft.date : aujourdHui();
+    const dureeVal = draft && draft.duree != null ? draft.duree : '';
+    const rpeVal = draft && draft.rpe != null ? draft.rpe : '';
     let html = `<div class="champ" style="margin-top:12px"><label for="muscu-date">Date de la séance</label><input type="date" id="muscu-date" value="${dateVal}"></div>`;
+    /* effort de séance (V4-F1) : optionnel, alimente la charge interne (sRPE) et le readiness */
+    html += `<div class="effort-saisie">
+      <label class="effort-champ" for="seance-duree">Durée <span class="effort-unite">min</span><input type="number" id="seance-duree" step="1" min="0" inputmode="numeric" placeholder="—" value="${dureeVal}"></label>
+      <label class="effort-champ" for="seance-rpe">Effort (RPE) <span class="effort-unite">/10</span><input type="number" id="seance-rpe" step="0.5" min="0" max="10" inputmode="decimal" placeholder="—" value="${rpeVal}"></label>
+    </div>`;
     /* raccourci : recopier la dernière séance pour n'éditer que ce qui change */
     if(jour.exercices.some(ex=>this.dernierePerf(ex.nom)))
       html += `<button class="btn btn-2" data-action="prefill-derniere" style="margin-bottom:6px">↩ Comme la dernière fois</button>`;
@@ -380,11 +387,23 @@ export class MuscuModule {
     });
     const dateEl = $('muscu-date');
     const date = dateEl ? dateEl.value : aujourdHui();
+    const { duree, rpe } = this.lireEffort();
     const hasData = blocs.some(b => b && b.some(s => s.charge!=='' || s.reps!==''));
     const unisDiff = unis.some((u,i) => !!u !== !!(jour.exercices[i] && jour.exercices[i].unilateral));
-    if(hasData || unisDiff) this.etat.brouillons[jour.id] = { date, blocs, unis };
+    if(hasData || unisDiff || duree != null || rpe != null) this.etat.brouillons[jour.id] = { date, blocs, unis, duree, rpe };
     else delete this.etat.brouillons[jour.id];
     this.store.sauver();
+  }
+
+  /* effort de séance saisi (V4-F1) : durée min > 0 et RPE ∈ [0,10], sinon null */
+  lireEffort(){
+    const dEl = $('seance-duree'), rEl = $('seance-rpe');
+    const d = dEl ? parseFloat(dEl.value) : NaN;
+    const r = rEl ? parseFloat(rEl.value) : NaN;
+    return {
+      duree: Number.isFinite(d) && d > 0 ? d : null,
+      rpe: Number.isFinite(r) && r >= 0 && r <= 10 ? r : null,
+    };
   }
 
   toggleUniSeance(btn){
@@ -425,8 +444,12 @@ export class MuscuModule {
     /* recap calculé AVANT insertion (comparé à l'historique existant) */
     const recap = this.construireRecap(date, jour, exercices);
 
+    const { duree, rpe } = this.lireEffort();   /* effort de séance (V4-F1), optionnel */
+    const seance = { date, programmeId:prog.id, jourId:jour.id, jourNom:jour.nom, exercices };
+    if(duree != null) seance.duree = duree;
+    if(rpe != null) seance.rpe = rpe;
     this.etat.seances = this.etat.seances.filter(s=>!(s.date===date && s.jourId===jour.id));
-    this.etat.seances.push({ date, programmeId:prog.id, jourId:jour.id, jourNom:jour.nom, exercices });
+    this.etat.seances.push(seance);
     this.etat.seances.sort(triDate);
     delete this.etat.brouillons[jour.id];   /* la séance enregistrée remplace le brouillon */
     this.store.sauver();

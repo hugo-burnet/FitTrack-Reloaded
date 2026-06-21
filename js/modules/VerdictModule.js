@@ -1,15 +1,21 @@
-import { $, echap, ilYaJours, fmtDate } from '../utils.js';
+import { $, echap, ilYaJours, fmtDate, aujourdHui } from '../utils.js';
 import { moyennesHebdo, rythmeMensuel, tendanceTaille, tendanceBras, brasStagne } from '../stats.js';
 import { decisionVerdict, SCENARIOS, OBJECTIFS_VERDICT } from '../verdict.js';
 import { protCible } from '../nutrition.js';
 import { adherenceHebdo, bilanForce } from '../bilan.js';
 import { pilotageCharge, serieCharge } from '../charge.js';
-import { scoreRisk, scoreCompliance, alerteSurcharge, alerteSousCharge } from '../scores.js';
+import { scoreRisk, scoreCompliance, alerteSurcharge, alerteSousCharge, alerteStagnation } from '../scores.js';
+import { readinessDuJour, recoveryDuJour, scoreProgression, etatJourPour } from '../readiness.js';
 import { optCommun } from '../charts.js';
 
 /* ================= VERDICT : l'arbre de décision (rendu) ================= */
 export class VerdictModule {
-  constructor(store, app){ this.store = store; this.app = app; this.chCharge = null; }
+  constructor(store, app){
+    this.store = store; this.app = app; this.chCharge = null;
+    /* saisie de la récup du jour (V4-F1) → écrit etat.etatsJour puis re-rend */
+    const save = $('recup-save');
+    if(save) save.addEventListener('click', () => this.enregistrerRecup());
+  }
 
   get etat(){ return this.store.etat; }
 
@@ -44,7 +50,89 @@ export class VerdictModule {
 
     this.renderScenarios(objectif);
     this.renderSemaine(rythme);
+    this.renderReadiness();
     this.renderCharge();
+  }
+
+  /* ---- récup & readiness (V4-F1) : saisie du jour + scores Readiness/Recovery/Progression + stagnation ---- */
+  renderReadiness(){
+    const etat = this.etat;
+    const seances = etat.seances;
+    /* préremplit la saisie avec l'état du jour d'aujourd'hui (si déjà renseigné), sans écraser une frappe en cours */
+    const ejAuj = etatJourPour(etat.etatsJour, aujourdHui());
+    const frais = ejAuj && ejAuj.date === aujourdHui() ? ejAuj : null;
+    const inS = $('recup-sommeil'), inC = $('recup-courb');
+    if(inS && document.activeElement !== inS) inS.value = frais && frais.sommeil != null ? frais.sommeil : '';
+    if(inC && document.activeElement !== inC) inC.value = frais && frais.courbatures != null ? frais.courbatures : '';
+
+    const rd = readinessDuJour(etat);
+    const rec = recoveryDuJour(etat);
+    const prog = scoreProgression(seances);
+
+    /* feu + reco */
+    const pastille = $('rd-pastille'), lib = $('rd-libelle'), reco = $('rd-reco');
+    pastille.className = 'rd-pastille' + (rd.feu && rd.feu !== 'inconnu' ? ' ' + rd.feu : '');
+    const feuLib = { vert: 'Feu vert', orange: 'Allège', rouge: 'Repos / technique', inconnu: 'Forme du jour' };
+    lib.textContent = rd.score == null ? 'Renseigne ton sommeil et tes courbatures pour estimer ta forme du jour.'
+                                       : `${feuLib[rd.feu]} — readiness ${rd.score}/100`;
+    reco.textContent = rd.score == null ? '' : rd.reco;
+
+    /* jauges */
+    const feuCls = { vert: 'vert', orange: 'orange', rouge: 'rouge' };
+    $('rd-readiness').textContent = rd.score == null ? '—' : rd.score;
+    const subRd = $('rd-readiness-sub');
+    subRd.textContent = rd.score == null ? 'données à venir' : `${feuLib[rd.feu]}${rd.confiance === 'indicatif' ? ' · indicatif' : ''}`;
+    subRd.className = 'charge-sub ' + (feuCls[rd.feu] || '');
+
+    $('rd-recovery').textContent = rec.score == null ? '—' : rec.score;
+    $('rd-recovery-sub').textContent = rec.score == null ? 'données à venir' : `${rec.niveau}${rec.confiance === 'indicatif' ? ' · indicatif' : ''}`;
+
+    $('rd-progression').textContent = prog.score == null ? '—' : prog.score;
+    const subPr = $('rd-progression-sub');
+    subPr.textContent = prog.score == null ? 'données à venir' : `${prog.niveau}${prog.confiance === 'indicatif' ? ' · indicatif' : ''}`;
+    subPr.className = 'charge-sub ' + (prog.niveau === 'progresse' ? 'ok' : prog.niveau === 'régresse' ? 'alerte' : '');
+
+    /* alerte de stagnation : gate sur l'assiduité (réutilise scoreCompliance) */
+    const compliance = this.complianceCourante();
+    const bonneAdherence = compliance != null && compliance >= 60;
+    const stag = alerteStagnation({ niveauProgression: prog.niveau, prs: prog.prs, bonneAdherence });
+    const boxS = $('stagnation-alerte');
+    if(stag.actif){
+      boxS.className = 'verdict ' + stag.cls;
+      $('stagnation-t').textContent = stag.titre;
+      $('stagnation-e').textContent = stag.e;
+    } else { boxS.className = 'verdict cache'; }
+  }
+
+  /* score d'assiduité courant (0-100) ou null — partagé readiness/charge */
+  complianceCourante(){
+    const seances = this.etat.seances;
+    const p = pilotageCharge(seances);
+    const prog = this.etat.programmes.find(x => x.id === this.etat.programmeActif) || this.etat.programmes[0];
+    const planifiees = prog && Array.isArray(prog.jours) ? prog.jours.length : 0;
+    const cutoff = ilYaJours(6);
+    const { joursProt } = adherenceHebdo(this.etat.journalRepas, seances, protCible(this.etat.objectifKcal), cutoff);
+    return scoreCompliance({ seancesRealisees: p.nbSeances, seancesPlanifiees: planifiees, joursProt, joursKcal: this.joursKcalCible(cutoff) }).score;
+  }
+
+  /* enregistre la récup du jour (sommeil/courbatures) dans etat.etatsJour, par date (upsert) */
+  enregistrerRecup(){
+    const sV = $('recup-sommeil').value, cV = $('recup-courb').value;
+    const sommeil = sV === '' ? null : Math.max(0, Math.min(24, parseFloat(sV)));
+    const courbatures = cV === '' ? null : Math.max(0, Math.min(10, parseInt(cV, 10)));
+    const date = aujourdHui();
+    if(!Array.isArray(this.etat.etatsJour)) this.etat.etatsJour = [];
+    const ej = this.etat.etatsJour;
+    const i = ej.findIndex(e => e.date === date);
+    const entree = {
+      date,
+      sommeil: Number.isFinite(sommeil) ? sommeil : null,
+      courbatures: Number.isFinite(courbatures) ? courbatures : null,
+    };
+    if(i >= 0) ej[i] = entree; else ej.push(entree);
+    this.etat.etatsJour = ej.slice().sort((a, b) => a.date.localeCompare(b.date));   /* nouvelle réf → mémoïsation invalidée */
+    this.store.sauver();
+    this.render();
   }
 
   /* ---- pilotage de la charge (V4-F0) : aiguë/chronique/ACWR + scores + alerte + courbe ---- */
