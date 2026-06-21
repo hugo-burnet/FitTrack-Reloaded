@@ -130,7 +130,7 @@ js/
   data.js             constantes & plan/programme/courses ; ALIMENTS = base curée
   data/aliments-base.js  base d'aliments curée (~170, catégorisée, macros complètes)
   defaults.js         fabrique unique de l'état par défaut
-  migrations.js       versionnement de schéma (1→5) + migrations
+  migrations.js       versionnement de schéma (1→7) + migrations
   utils.js            helpers (dates, formatage, slug, échappement…)
   — moteurs purs (testés) —
   stats.js            moyennes hebdo (mémoïsées), rythme, tendances, 1RM, brasStagne

@@ -373,3 +373,30 @@ Ne modifier aucun fichier avant :
 2. d'avoir produit tous les livrables ;
 3. d'avoir présenté les recommandations ;
 4. d'avoir obtenu une validation explicite pour démarrer les modifications.
+
+---
+
+# État d'avancement (mis à jour le 2026-06-21)
+
+> Ce document est le **brief d'audit d'origine** (historique). L'audit a été livré et validé ;
+> la refonte est en cours d'implémentation. Suivi vivant : `audit/journal-implementation.md`.
+> Prompt de reprise de session : `REPRISE.md` (local). Doc utilisateur : `README.md`.
+
+**Audit (Phases 1→6 + livrables) : livré et validé.** Implémentation par lots, chacun
+testé (moteurs purs) et mergé dans `main`. Contrainte synchro respectée (extensions de
+`fusion.js` uniquement sur validation explicite).
+
+- **V2 — Stabilisation** : fait (fabrique d'état unique, migrations, undo, sanitize/fusion testés).
+- **V3 — Modularisation + Nutrition (E1–E5)** : fait (besoins, macros complètes, base curée +
+  aliments perso, multi-menus, plats composés, verdict multi-objectif).
+- **V4 — Intelligence & Analyse** :
+  - **F0 socle charge** : aiguë/chronique/ACWR, monotonie/strain, scores Risk/Compliance, alertes.
+  - **F1 récupération & readiness** : état du jour (sommeil/courbatures) + effort de séance (durée/RPE),
+    fitness-fatigue (Banister), scores Readiness/Recovery/Progression, alertes stagnation/sous-charge.
+- **Nutri — Générateur de menus adaptés** : moteur visant les 5 macros + assistant guidé + ajustement
+  en place (corrige la sur-livraison de protéines du plan fixe).
+
+**État technique** : schéma d'état 1→7, `sw.js` v32, **244 tests verts**, zéro dépendance.
+
+**Suite prévue** : V4-F2 (deload auto, ajustement de volume, reco contextualisée, projection de
+progression), puis F3 (cycles, corrélations). Détail et méthode dans `REPRISE.md`.
