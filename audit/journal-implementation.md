@@ -89,10 +89,14 @@ ex. recompo 72,5 kg, cible 145 g mais menu ≈ 197 g) et les kcal saturent hors 
   goûts en chips par rôle (1 tap j'aime / 2 à éviter / 3 neutre), bascule « faciles uniquement »,
   **« Générer un nouveau menu »** (crée « <Objectif> auto » et l'active) **ou « Ajuster le menu
   actuel »** (corrige le menu actif en place), aperçu macros atteintes vs cible.
+- [x] **Assistant guidé** (overlay plein écran, 1 question/étape, barre de progression) :
+  objectif → cuisiner ? → goûts par catégorie (prot/gluc/lip/fruits&légumes, chips tri-état) →
+  récap (cible + résumé) → génère. Auto-avance sur les choix uniques. Réglage manuel replié
+  dans un `<details>`. Lit/écrit le MÊME état (objectif + preferencesAlim) → source unique.
 - [x] **Sync des goûts** : `fusion.js` étendu (union des aimés/évités entre appareils, l'évité
   gagne, faciliteSeulement à l'entrant ; validé le 2026-06-21). Les menus générés se propagent
   déjà via `plansAlim`. **+1 test** (`fusion.test.js`).
-- **228 → 244 tests verts.** `sw.js` v31 (+ generateur.js, generateur-pool.js précachés).
+- **228 → 244 tests verts.** `sw.js` v32 (+ generateur.js, generateur-pool.js précachés).
 - Vérif navigateur (CDP, cache désactivé) : profil → cible, « j'aime poulet » pris en compte,
   Générer → menu créé/activé, macros à ±2 g de la cible, zéro erreur console.
 - ⏳ Pistes : étendre le pool, Q&A guidée (allergies/régimes), corriger aussi les menus
