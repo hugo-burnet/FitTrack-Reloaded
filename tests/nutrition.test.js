@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { basesKcal, facteurFlex, flexSature, consoQuotidienne, FLEX_MIN, FLEX_MAX,
-         kcalItem, protItem, glucItem, lipItem, fibItem, protCible, macrosCible, macrosPlat } from '../js/nutrition.js';
+         kcalItem, protItem, glucItem, lipItem, fibItem, protCible, macrosCible, macrosPlat,
+         kcalBaseMenu, facteurMenu, menuSature, MENU_MIN, MENU_MAX } from '../js/nutrition.js';
 import { ALIMENTS } from '../js/data.js';
 
 const { fixe, flex } = basesKcal();
@@ -87,6 +88,59 @@ test('macrosCible : prot identique à protCible (même base de calcul)', () => {
   assert.equal(macrosCible(2545).prot, protCible(2545));
   // les glucides (part flex : riz/avoine) montent avec l'objectif kcal
   assert.ok(macrosCible(4000).gluc > macrosCible(1600).gluc);
+});
+
+/* ================= MENU GÉNÉRÉ : échelle globale (stepper proportionnel) =================
+   Contrairement au flex (seuls riz/avoine bougent), un menu généré rééchelonne TOUT du
+   même facteur global = objectif / kcal du menu, borné [0.5, 2.0]. */
+
+/* menu-fixture : aliments de base, mélange g (poulet/riz/patate-douce) et unités (banane/whey) */
+const MENU = [
+  { id:'pdej', nom:'Petit-déj', items:[['avoine',80],['whey',1],['banane',1]] },
+  { id:'dej',  nom:'Déjeuner',  items:[['poulet',180],['riz',120],['huile-olive',10]] },
+  { id:'diner',nom:'Dîner',     items:[['oeuf',150],['patate-douce',200]] },
+];
+const kcalMenu = () => MENU.reduce((s,r)=>s+r.items.reduce((a,[c,q])=>a+kcalItem(c,q),0),0);
+
+test('kcalBaseMenu : somme des portions stockées (g et unités)', () => {
+  assert.ok(Math.abs(kcalBaseMenu(MENU) - kcalMenu()) < 1e-9);
+  assert.equal(kcalBaseMenu([]), 0);
+  assert.equal(kcalBaseMenu(null), 0);
+});
+
+test('facteurMenu : vaut 1 quand l\'objectif égale les kcal du menu', () => {
+  assert.ok(Math.abs(facteurMenu(Math.round(kcalMenu()), MENU) - 1) < 0.01);
+});
+
+test('facteurMenu : sature aux bornes [MENU_MIN, MENU_MAX]', () => {
+  assert.equal(facteurMenu(0, MENU), MENU_MIN);
+  assert.equal(facteurMenu(1000000, MENU), MENU_MAX);
+  assert.equal(facteurMenu(2000, []), 1);   // menu vide → pas de division par 0
+});
+
+test('menuSature : bas / haut / null selon le facteur global', () => {
+  const k = kcalMenu();
+  assert.equal(menuSature(Math.round(k), MENU), null);
+  assert.equal(menuSature(Math.round(k*MENU_MIN/2), MENU), 'bas');
+  assert.equal(menuSature(Math.round(k*MENU_MAX*2), MENU), 'haut');
+  assert.equal(menuSature(2000, []), null);
+});
+
+test('macrosCible (genere) : TOUTES les macros suivent l\'objectif (pas seulement les glucides)', () => {
+  const bas = macrosCible(1700, MENU, ALIMENTS, true);
+  const haut = macrosCible(2800, MENU, ALIMENTS, true);
+  assert.ok(haut.prot > bas.prot, 'les protéines doivent monter avec l\'objectif');
+  assert.ok(haut.gluc > bas.gluc);
+  assert.ok(haut.lip > bas.lip);
+});
+
+test('macrosCible (genere) : kcal du menu rééchelonné ≈ objectif sur la plage non saturée', () => {
+  const k = kcalMenu();
+  for(let obj = Math.ceil(k*MENU_MIN); obj <= Math.floor(k*MENU_MAX); obj += 50){
+    const m = macrosCible(obj, MENU, ALIMENTS, true);
+    const kcal = 4*m.prot + 4*m.gluc + 9*m.lip;   // reconstitution Atwater des macros cible
+    assert.ok(Math.abs(kcal - obj) <= obj*0.10 + 60, `objectif ${obj} → ${kcal} kcal (écart trop grand)`);
+  }
 });
 
 /* ---- plats composés (E4) ---- */

@@ -8,22 +8,30 @@
    fusionné base+perso pour gérer aussi les aliments personnels. */
 
 import { ALIMENTS } from './data.js';
-import { facteurFlex, kcalItem, protItem, glucItem, lipItem, fibItem } from './nutrition.js';
+import { facteurFlex, facteurMenu, kcalItem, protItem, glucItem, lipItem, fibItem } from './nutrition.js';
 
-/* quantité d'un aliment ajustée à l'objectif : seuls les aliments `flex` (glucides)
-   bougent, par le facteur flex borné, arrondi au multiple de 5 g. Non-flex inchangé.
+/* quantité d'un aliment ajustée à l'objectif. Deux modes :
+   - plan fixe historique (genere=false) : seuls les aliments `flex` (glucides) bougent,
+     par le facteur flex borné, arrondi au multiple de 5 g. Non-flex inchangé.
+   - menu généré/ajusté (genere=true) : TOUS les aliments bougent du même facteur global
+     (objectif / kcal du menu), arrondi 5 g (ou 1 unité). Le stepper rééchelonne tout le menu.
    `plan` = repas du menu actif (source du facteur), pas la surcharge du jour. */
-export function qteAjustee(cle, qBase, objectifKcal, plan, aliments = ALIMENTS){
+export function qteAjustee(cle, qBase, objectifKcal, plan, aliments = ALIMENTS, genere = false){
   const a = aliments[cle];
-  if(!a || !a.flex) return qBase;
+  if(!a) return qBase;
+  if(genere){
+    const pas = a.unite !== undefined ? 1 : 5;
+    return Math.max(pas, Math.round(qBase * facteurMenu(objectifKcal, plan, aliments) / pas) * pas);
+  }
+  if(!a.flex) return qBase;
   return Math.round(qBase * facteurFlex(objectifKcal, plan) / 5) * 5;
 }
 
-/* macros (5 valeurs) d'un repas, flex ajusté à l'objectif. Remplace les ex-méthodes
-   repasKcal/Prot/Gluc/Lip/Fib en une passe unique. */
-export function macrosRepas(repas, objectifKcal, plan, aliments = ALIMENTS){
+/* macros (5 valeurs) d'un repas, ajusté à l'objectif (flex ou échelle globale). Remplace
+   les ex-méthodes repasKcal/Prot/Gluc/Lip/Fib en une passe unique. */
+export function macrosRepas(repas, objectifKcal, plan, aliments = ALIMENTS, genere = false){
   return repas.items.reduce((s, [cle, q]) => {
-    const qa = qteAjustee(cle, q, objectifKcal, plan, aliments);
+    const qa = qteAjustee(cle, q, objectifKcal, plan, aliments, genere);
     return {
       kcal: s.kcal + kcalItem(cle, qa, aliments),
       prot: s.prot + protItem(cle, qa, aliments),
@@ -57,11 +65,11 @@ export function consomme(entrees){
 
 /* construit l'entrée de journal d'un repas du plan coché : quantités ajustées,
    macros arrondies, items détaillés (nom/quantité/unité). */
-export function entreeJournalRepas(repas, jour, objectifKcal, plan, aliments = ALIMENTS){
-  const m = macrosRepas(repas, objectifKcal, plan, aliments);
+export function entreeJournalRepas(repas, jour, objectifKcal, plan, aliments = ALIMENTS, genere = false){
+  const m = macrosRepas(repas, objectifKcal, plan, aliments, genere);
   const items = repas.items.map(([cle, qBase]) => {
     const a = aliments[cle];
-    const q = qteAjustee(cle, qBase, objectifKcal, plan, aliments);
+    const q = qteAjustee(cle, qBase, objectifKcal, plan, aliments, genere);
     return { cle, nom: a.nom, qte: q, unite: a.unite !== undefined ? (a.unite || 'unité') : 'g' };
   });
   return {

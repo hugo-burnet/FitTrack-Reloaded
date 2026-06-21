@@ -288,3 +288,36 @@ corrélations) sont en place, tous en moteurs purs testés et en dégradé graci
   carte + assistant).
 - [x] **341 → 356 tests verts.** `sw.js` v36 → v37 (+ `regimes.js` précaché). Vérif navigateur
   (CDP, cache désactivé) : 8 chips carte + assistant, toggle végan persisté, zéro erreur console.
+
+---
+
+## Nutri — Stepper proportionnel sur menu généré (branche `nutri-stepper-proportionnel`) ✅ FAIT
+- **Problème** : le modèle « flex » historique n'ajuste QUE les glucides marqués flex (en pratique
+  riz/avoine) vers `objectifKcal`. Sur un menu **généré** (souvent sans riz/avoine, le pool ayant
+  beaucoup de glucides non-flex : patate-douce, cornflakes, pdt, quinoa…), pousser le stepper ±
+  ne bougeait presque rien → il paraissait « déconnecté ». Le fix précédent réglait la cohérence
+  *à la génération* mais pas le réglage fin ultérieur.
+- [x] **Moteur** `nutrition.js` : `kcalBaseMenu` (kcal du menu à ses portions stockées),
+  `facteurMenu` = `objectifKcal / kcalBaseMenu` borné **[0.5 ; 2.0]** (`MENU_MIN`/`MENU_MAX`),
+  `menuSature` (`bas`/`haut`/`null`, jumeau de `flexSature` mais pour le menu entier). `macrosCible`
+  gagne `(aliments, genere)` : en mode généré, **TOUS** les aliments sont rééchelonnés du facteur
+  global (arrondi 5 g / 1 unité), catalogue injectable (gère les aliments perso).
+- [x] **Moteur** `repas-logique.js` : `qteAjustee`/`macrosRepas`/`entreeJournalRepas` gagnent un
+  drapeau `genere` final. En mode généré, chaque aliment (flex ou non) suit le facteur global ;
+  le plan fixe historique garde son comportement exact (ISO-FONCTIONNEL).
+- [x] **État** : flag additif `plansAlim[].genere=true` posé par `genererMenuAuto` (menu neuf) et
+  `ajusterMenuActuel` (menu existant devient « échelle globale »). **Aucune migration** (additif).
+  `sanitize.js` normalise `genere` en booléen. **Sync** : aucun changement de `fusion.js` — les
+  menus fusionnent déjà au niveau objet (`map[p.id]=p`), donc le flag voyage tout seul.
+- [x] **UI** `RepasModule` : `estGenere()`/`alimentsMenu()` dispatchent ; la cible du jour, les
+  cartes repas et le journal suivent l'échelle globale. Note sous le stepper (`#obj-note`) et
+  avertissement de saturation (`#flex-warn`) **dynamiques** selon le type de menu.
+- [x] **Tests** : `nutrition.test.js` (+6 : kcalBaseMenu/facteurMenu/menuSature, macrosCible
+  généré — toutes les macros suivent, kcal ≈ objectif sur la plage non saturée),
+  `repas-logique.test.js` (+4 : qteAjustee non-flex bouge en généré, **cible == somme des repas**
+  sur toute la plage du stepper, journal rééchelonné), `sanitize.test.js` (+1, flag booléen),
+  `fusion.test.js` (+1, flag voyage par id). **356 → 368 tests verts.**
+- [x] `sw.js` v37 → v38. Vérif navigateur (CDP, cache désactivé) : menu généré → cible
+  protéines 115→185 g (gluc/lip/fib suivent aussi) quand l'objectif passe 2000→3000 ; menu fixe
+  → protéines 109→115 g (seul le flex riz bouge), comportement historique intact ; notes
+  dynamiques OK ; zéro erreur console.

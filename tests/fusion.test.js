@@ -87,6 +87,14 @@ test('fusion : menus (plansAlim) réconciliés par id, l\'entrant gagne', () => 
   assert.equal(etat.planAlimActif, 'seche');
 });
 
+test('fusion : le flag genere d\'un menu voyage avec l\'objet (fusion par id)', () => {
+  const etat = etatParDefaut();
+  fusionnerEtat(etat, { plansAlim:[
+    { id:'auto', nom:'Sèche auto', genere:true, repas:[{id:'dej', items:[['poulet',200]]}] },
+  ], planAlimActif:'auto' });
+  assert.equal(etat.plansAlim.find(p=>p.id==='auto').genere, true);
+});
+
 test('fusion : export legacy (plan unique) met à jour les repas du menu actif', () => {
   const etat = etatParDefaut();
   const avant = etat.plansAlim.length;

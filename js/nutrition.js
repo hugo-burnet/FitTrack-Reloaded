@@ -7,6 +7,12 @@ import { ALIMENTS, PLAN } from './data.js';
 
 export const FLEX_MIN = 0.4, FLEX_MAX = 1.8;
 
+/* Menus GÉNÉRÉS/AJUSTÉS (generateur.js) : contrairement au plan fixe historique (où seuls
+   les glucides `flex` bougent), on rééchelonne TOUT le menu d'un facteur global pour suivre
+   l'objectif kcal. Bornes plus larges que le flex : le menu entier peut grossir/maigrir. */
+export const MENU_MIN = 0.5, MENU_MAX = 2.0;
+const clampMenu = f => Math.max(MENU_MIN, Math.min(MENU_MAX, f));
+
 /* item-fns : `aliments` injectable (défaut = base ALIMENTS) → l'Ut peut passer le
    catalogue fusionné base+perso (catalogue.js) pour calculer aussi ses aliments perso. */
 export function kcalItem(cle, q, aliments=ALIMENTS){ const a=aliments[cle]; return a.unite!==undefined ? a.kcalU*q : a.kcal100*q/100; }
@@ -39,6 +45,33 @@ export function facteurFlex(objectifKcal, plan = PLAN){
   return Math.max(FLEX_MIN, Math.min(FLEX_MAX, f));
 }
 
+/* ---- échelle globale d'un menu généré (toutes portions au prorata de l'objectif) ----
+   `aliments` injectable (catalogue base+perso) → un menu généré peut contenir des aliments perso. */
+
+/* kcal de base du menu = somme des portions stockées (= telles que générées/ajustées) */
+export function kcalBaseMenu(plan, aliments = ALIMENTS){
+  let k = 0;
+  (plan || []).forEach(r => r.items.forEach(([cle, q]) => { if(aliments[cle]) k += kcalItem(cle, q, aliments); }));
+  return k;
+}
+
+/* facteur global appliqué à TOUS les aliments du menu, borné [0.5, 2.0] */
+export function facteurMenu(objectifKcal, plan, aliments = ALIMENTS){
+  const base = kcalBaseMenu(plan, aliments);
+  if(base <= 0) return 1;
+  return clampMenu(objectifKcal / base);
+}
+
+/* le facteur global sature-t-il une borne ? 'bas' | 'haut' | null (cf. flexSature, mais menu entier) */
+export function menuSature(objectifKcal, plan, aliments = ALIMENTS){
+  const base = kcalBaseMenu(plan, aliments);
+  if(base <= 0) return null;
+  const f = objectifKcal / base;
+  if(f < MENU_MIN) return 'bas';
+  if(f > MENU_MAX) return 'haut';
+  return null;
+}
+
 /* protéines cibles du jour = ce que délivre le plan (flex ajusté à l'objectif) */
 export function protCible(objectifKcal, plan = PLAN){
   const f = facteurFlex(objectifKcal, plan);
@@ -66,9 +99,23 @@ export function macrosPlat(composants, aliments = ALIMENTS){
 /* macros cibles du jour = ce que délivre le plan (flex ajusté à l'objectif).
    Renvoie {prot, gluc, lip, fib} en grammes arrondis. Même règle d'arrondi de
    quantité (flex → multiple de 5 g) que protCible/qteAjustee, pour cohérence d'affichage. */
-export function macrosCible(objectifKcal, plan = PLAN){
-  const f = facteurFlex(objectifKcal, plan);
+export function macrosCible(objectifKcal, plan = PLAN, aliments = ALIMENTS, genere = false){
   let prot=0, gluc=0, lip=0, fib=0;
+  if(genere){
+    /* menu généré : facteur global sur TOUS les aliments (arrondi 5 g / 1 unité) */
+    const f = facteurMenu(objectifKcal, plan, aliments);
+    plan.forEach(r=>r.items.forEach(([cle,q])=>{
+      const a = aliments[cle]; if(!a) return;
+      const pas = a.unite!==undefined ? 1 : 5;
+      const qte = Math.max(pas, Math.round(q*f/pas)*pas);
+      prot += protItem(cle, qte, aliments);
+      gluc += glucItem(cle, qte, aliments);
+      lip  += lipItem(cle, qte, aliments);
+      fib  += fibItem(cle, qte, aliments);
+    }));
+    return { prot:Math.round(prot), gluc:Math.round(gluc), lip:Math.round(lip), fib:Math.round(fib) };
+  }
+  const f = facteurFlex(objectifKcal, plan);
   plan.forEach(r=>r.items.forEach(([cle,q])=>{
     const qte = ALIMENTS[cle].flex ? Math.round(q*f/5)*5 : q;
     prot += protItem(cle, qte);
