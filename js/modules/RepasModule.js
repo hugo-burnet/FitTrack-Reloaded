@@ -5,6 +5,8 @@ import { catalogue, rechercher, categoriesPresentes } from '../catalogue.js';
 import { kcalItem, protItem, glucItem, lipItem, fibItem, facteurFlex, flexSature, protCible, macrosCible, macrosPlat } from '../nutrition.js';
 import { moyennesHebdo } from '../stats.js';
 import { calculerBesoins, frequenceHebdo, OBJECTIFS } from '../besoins.js';
+import { genererMenu } from '../generateur.js';
+import { POOL_GENERATEUR } from '../data/generateur-pool.js';
 import { repasActifs, menuActif } from '../plans.js';
 import { toast, demander, confirmer } from '../ui.js';
 
@@ -28,6 +30,8 @@ export class RepasModule {
     this.platsOuvert = false;       /* éditeur de plats (E4) déplié ? */
     this.platEdit = null;           /* id du plat en cours d'édition (sinon création) */
     this.platComposants = [];       /* composants en cours de saisie [[cle,qté],…] */
+    this.genOuvert = false;         /* générateur de menu (Nutri F1) déplié ? */
+    this.dernierMenuGen = null;     /* dernier résultat de génération (pour l'aperçu) */
     this.bind();
   }
 
@@ -158,6 +162,11 @@ export class RepasModule {
       const objChip = e.target.closest('#bes-objectif [data-obj]');
       if(objChip){ this.choisirObjectif(objChip.dataset.obj); return; }
       if(e.target.closest('#btn-besoins-appliquer')){ this.appliquerBesoins(); return; }
+      /* générateur de menu (Nutri F1) */
+      if(e.target.closest('#btn-gen-toggle')){ this.basculerGen(); return; }
+      const genChip = e.target.closest('#gen-prefs [data-gen-cle]');
+      if(genChip){ this.cyclerPrefGen(genChip.dataset.genCle); return; }
+      if(e.target.closest('#btn-gen-lancer')){ this.genererMenuAuto(); return; }
       const carte = e.target.closest('[data-action="prendre-repas"]');
       if(carte){ this.prendreRepas(carte.dataset.id); return; }
     });
@@ -171,6 +180,7 @@ export class RepasModule {
       if(e.target.id==='extra-cat') this.remplirPickerAliments();
       if(e.target.id==='plat-aliment') this.majUnitePlat();
       if(e.target.id==='bes-sexe' || e.target.id==='bes-age' || e.target.id==='bes-stature') this.majProfilDepuisChamps();
+      if(e.target.id==='gen-facile'){ this.etat.preferencesAlim.faciliteSeulement = e.target.checked; this.store.sauver(); this.renderGen(); }
     });
     root.addEventListener('input', e => {
       if(e.target.id==='menu-nom') this.renommerMenu(e.target.value);
@@ -701,6 +711,106 @@ export class RepasModule {
       <div class="note" style="margin:6px 0 0">BMR ${r.bmr} × activité ${r.facteur} (≈ ${sem} séance${sem>1?'s':''}/sem) → TDEE ${r.tdee} kcal · poids pris : ${poids} kg.</div>`;
   }
 
+  /* ================= GÉNÉRATEUR DE MENU (Nutri F1) =================
+     Cibles = besoins (kcal + macros depuis profil/objectif) ; goûts = etat.preferencesAlim.
+     genererMenu (pur) bâtit un menu mangeable qui tombe sur les 3 macros, puis on le crée
+     comme NOUVEAU menu (le menu actuel est conservé) et on l'active. */
+  OBJ_LIB = { seche:'Sèche', recompo:'Recompo', masse:'Masse' };
+
+  /* cibles {kcal,prot,gluc,lip,fib} depuis le calculateur de besoins ; {valide,manque} sinon */
+  cibleGen(){
+    const r = this.calculBesoins();
+    if(!r.valide) return { valide:false, manque:r.manque };
+    return { valide:true, cibles:{ kcal:r.kcal, prot:r.macros.proteines, gluc:r.macros.glucides, lip:r.macros.lipides, fib:r.macros.fibres } };
+  }
+
+  basculerGen(){
+    this.genOuvert = !this.genOuvert;
+    $('gen-form').classList.toggle('cache', !this.genOuvert);
+    $('btn-gen-toggle').setAttribute('aria-expanded', String(this.genOuvert));
+    $('btn-gen-toggle').textContent = this.genOuvert ? '✕ Fermer' : 'Créer un menu adapté';
+    if(this.genOuvert) this.renderGen();
+  }
+
+  /* tap sur un aliment : neutre → aimé → évité → neutre (persisté dans preferencesAlim) */
+  cyclerPrefGen(cle){
+    const p = this.etat.preferencesAlim;
+    const aime = p.aimes.includes(cle), evite = p.evites.includes(cle);
+    p.aimes = p.aimes.filter(c => c !== cle);
+    p.evites = p.evites.filter(c => c !== cle);
+    if(!aime && !evite) p.aimes.push(cle);        /* neutre → aimé */
+    else if(aime) p.evites.push(cle);             /* aimé → évité */
+    /* évité → neutre : déjà retiré des deux */
+    this.store.sauver();
+    this.renderGen();
+  }
+
+  genererMenuAuto(){
+    const c = this.cibleGen();
+    if(!c.valide){
+      const lib = { sexe:'le sexe', age:'l’âge', stature:'la taille', poids:'une pesée (onglet Mesures)' };
+      toast('Renseigne ' + c.manque.map(m => lib[m] || m).join(', ') + ' dans le calculateur pour générer.', 'erreur');
+      return;
+    }
+    const p = this.etat.preferencesAlim;
+    const res = genererMenu(c.cibles, { aimes:p.aimes, evites:p.evites, faciliteSeulement:p.faciliteSeulement });
+    const nom = `${this.OBJ_LIB[this.objectifCourant()]} auto`;
+    const id = 'm' + Date.now();
+    this.etat.plansAlim.push({ id, nom, repas: res.repas.map(r => ({ id:r.id, nom:r.nom, items:r.items.map(([cle, q]) => [cle, q]) })) });
+    this.dernierMenuGen = res;
+    this.etat.planAlimActif = id;
+    this.etat.repas.planJour = null;
+    this.store.sauver();
+    toast(`Menu « ${nom} » créé et activé.`, 'ok');
+    this.render();
+  }
+
+  renderGen(){
+    if(!this.genOuvert) return;
+    const c = this.cibleGen();
+    const elC = $('gen-cible');
+    if(c.valide){
+      const t = c.cibles;
+      elC.textContent = `Cible (${this.OBJ_LIB[this.objectifCourant()]}) : ${t.kcal} kcal · P ${t.prot} / G ${t.gluc} / L ${t.lip} g · fibres ${t.fib} g.`;
+    } else {
+      const lib = { sexe:'sexe', age:'âge', stature:'taille', poids:'une pesée' };
+      elC.textContent = `Renseigne ${c.manque.map(m => lib[m] || m).join(', ')} dans le calculateur ci-dessus pour générer un menu ciblé.`;
+    }
+    const fac = $('gen-facile'); if(fac) fac.checked = !!this.etat.preferencesAlim.faciliteSeulement;
+    this.renderGenPrefs();
+    this.renderGenResultat();
+  }
+
+  /* chips d'aliments du pool, groupés par rôle, marqués aimé / évité */
+  renderGenPrefs(){
+    const box = $('gen-prefs'); if(!box) return;
+    const p = this.etat.preferencesAlim;
+    const roles = [['prot','Protéines'], ['gluc','Glucides'], ['lip','Lipides'], ['fibre','Fruits & légumes']];
+    box.innerHTML = roles.map(([role, lib]) => {
+      const chips = POOL_GENERATEUR.filter(e => e.role === role && ALIMENTS[e.cle]).map(e => {
+        const etat = p.aimes.includes(e.cle) ? ' aime' : p.evites.includes(e.cle) ? ' evite' : '';
+        return `<button type="button" class="gen-chip${etat}" data-gen-cle="${echap(e.cle)}">${echap(ALIMENTS[e.cle].nom)}</button>`;
+      }).join('');
+      return `<div class="gen-role"><div class="gen-role-lib">${lib}</div><div class="gen-chips">${chips}</div></div>`;
+    }).join('');
+  }
+
+  /* aperçu du dernier menu généré : macros atteintes vs cible + avertissements */
+  renderGenResultat(){
+    const box = $('gen-resultat'); if(!box) return;
+    const res = this.dernierMenuGen;
+    if(!res){ box.innerHTML = ''; return; }
+    const m = res.macros, e = res.ecarts;
+    const sg = (v) => (v >= 0 ? '+' : '') + v;
+    const sat = res.saturations.length
+      ? `<p class="note" style="color:var(--alerte);margin:6px 0 0">⚠ Cible non atteignable avec ces aliments : ${res.saturations.join(', ')}. Aime plus d'aliments ou décoche « faciles uniquement ».</p>`
+      : `<p class="note" style="color:var(--ok);margin:6px 0 0">✓ Cible atteinte. Menu créé et activé — ajuste-le librement dans « Gérer les menus ».</p>`;
+    box.innerHTML = `
+      <div class="gen-res-tete">Menu généré</div>
+      <div class="gen-res-macros mono">${m.kcal} kcal (${sg(e.kcal)}) · P ${m.prot} (${sg(e.prot)}) · G ${m.gluc} (${sg(e.gluc)}) · L ${m.lip} (${sg(e.lip)}) · fib ${m.fib} (${sg(e.fib)})</div>
+      ${sat}`;
+  }
+
   /* ---- affichage ---- */
   render(){
     this.store.resetSiNouveauJour();
@@ -708,6 +818,7 @@ export class RepasModule {
     const obj = $('obj-kcal');
     if(document.activeElement!==obj) obj.value = this.etat.objectifKcal;
     this.renderBesoins();   /* calculateur (E5) : rafraîchit l'aperçu si déplié */
+    if(this.genOuvert) this.renderGen();   /* générateur de menu (Nutri F1) */
     if(this.persoOuvert) this.renderPerso();   /* éditeur d'aliments perso (E2) */
     this.renderPlatsActifs();                  /* plats composés (E4) : liste « tap pour journaliser » */
 

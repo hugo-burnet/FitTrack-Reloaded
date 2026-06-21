@@ -322,6 +322,26 @@ select{-webkit-appearance:none;appearance:none}
 .chip:active{background:var(--plaque)}
 .chip:focus-visible{outline:2px solid var(--laiton);outline-offset:1px}
 
+/* ---------- générateur de menu (Nutri F1) ---------- */
+.gen-facile{display:flex;align-items:center;gap:8px;color:var(--craie);font-size:14px;font-weight:500;margin:4px 0 8px;cursor:pointer}
+.gen-facile input{width:auto;margin:0}
+.gen-facile-sub{color:var(--craie-3);font-size:12px;font-weight:400}
+.gen-leg{padding:1px 6px;border-radius:4px;font-weight:600}
+.gen-leg.aime{color:var(--ok);background:rgba(76,183,132,.12)}
+.gen-leg.evite{color:var(--alerte);background:rgba(224,122,99,.12)}
+.gen-role{margin-bottom:10px}
+.gen-role-lib{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--craie-3);margin-bottom:5px}
+.gen-chips{display:flex;flex-wrap:wrap;gap:6px}
+.gen-chip{
+  background:var(--plaque-2);border:1px solid var(--trait);border-radius:999px;
+  color:var(--craie-2);font:600 13px 'Inter',system-ui,sans-serif;padding:6px 11px;cursor:pointer;min-height:34px;
+}
+.gen-chip.aime{border-color:var(--ok);color:var(--ok);background:rgba(76,183,132,.12)}
+.gen-chip.evite{border-color:var(--alerte);color:var(--alerte);background:rgba(224,122,99,.12);text-decoration:line-through}
+.gen-chip:focus-visible{outline:2px solid var(--laiton);outline-offset:1px}
+.gen-res-tete{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--craie-3);margin:14px 0 4px}
+.gen-res-macros{font-size:13px;color:var(--craie);font-variant-numeric:tabular-nums}
+
 /* ---------- bloc exercice (saisie de séance) ---------- */
 .exo-bloc{background:var(--plaque-2);border-radius:var(--r-ctl);padding:12px;margin-bottom:10px}
 .exo-tete{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px}
