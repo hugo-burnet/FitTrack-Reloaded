@@ -85,7 +85,7 @@ Sur **GitHub Pages**, aucune manipulation : les modules ES sont servis en HTTP, 
 
 ## Tests
 
-Les moteurs purs sont couverts par des tests unitaires (**334 tests**), via le **runner natif de Node** — aucune dépendance à installer :
+Les moteurs purs sont couverts par des tests unitaires (**341 tests**), via le **runner natif de Node** — aucune dépendance à installer :
 
 ```bash
 npm test          # ou : node --test
@@ -98,7 +98,7 @@ Cibles :
 - `catalogue.js` / `aliments-base.js` — base curée cohérente (Atwater), fusion base+perso, recherche/filtre.
 - `plans.js` — menu actif & repas actifs (multi-menus).
 - `besoins.js` — BMR / TDEE / split macros (calculateur).
-- `generateur.js` / `generateur-pool.js` — génération **et ajustement en place** d’un menu visant les 3 macros, selon goûts & facilité.
+- `generateur.js` / `generateur-pool.js` — génération **et ajustement en place** d’un menu visant les 3 macros, selon goûts & facilité. Le pool « faciles » compte **81 aliments** (protéines, glucides, lipides, fruits & légumes) puisés dans la base curée.
 - `verdict.js` — l'arbre de décision pour chaque objectif (sèche/recompo/masse) + anti-réactivité.
 - `charge.js` — charge aiguë/chronique, ACWR & zones, monotonie/strain, série, charge hebdo.
 - `scores.js` — Compliance, Risk, alertes surcharge / sous-charge / stagnation, deload détecté.
