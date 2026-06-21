@@ -7,6 +7,9 @@
 
 import { ACWR_BAS, ACWR_HAUT, ACWR_RISQUE } from './charge.js';
 
+/* facteurs de la semaine d'allègement (deload) : volume cible 50-60 % du volume courant */
+export const DELOAD_RATIO = 0.55;
+
 const clamp = (x, a = 0, b = 100) => Math.max(a, Math.min(b, x));
 
 /* ---- Compliance : 0-100, plus haut = plus assidu ----
@@ -88,6 +91,24 @@ export function alerteSousCharge({ acwr = null, recovery = null }){
         e: `Ta charge est sous ta condition (ACWR ${acwr.toFixed(2)} < ${ACWR_BAS}), mais ta récupération est basse (${recovery}/100) : récupère d'abord, tu pousseras le volume ensuite.` };
     return { actif: true, cls: 'v-hausse', titre: 'Marge pour pousser',
       e: `Ta charge récente est sous ta condition installée (ACWR ${acwr.toFixed(2)} < ${ACWR_BAS}). Si la récupération est bonne, tu peux ajouter du volume sans risque.` };
+  }
+  return { actif: false };
+}
+
+/* ---- Deload auto/détecté (D.4) : semaine d'allègement quand 3 signaux convergent ----
+   Déclenche si : K semaines de charge hebdo montante (accumulation) ET fatigue installée
+   (TSB nettement négatif OU ACWR hors zone optimale) ET progression qui plafonne (stagne/
+   régresse). Propose un volume cible à ~50-60 % du volume hebdo courant. Conservateur :
+   les trois conditions doivent être réunies (un deload est coûteux à recommander à tort). */
+export function detecterDeload({ semainesMontantes = 0, forme = null, fitness = null, acwr = null, niveauProgression = null, chargeHebdoActuelle = null, seuilSemaines = 2 }){
+  const chargeMonte = semainesMontantes >= seuilSemaines;
+  const fatigueHaute = (typeof forme === 'number' && fitness > 0 && forme / fitness < -0.1)
+                    || (typeof acwr === 'number' && acwr > ACWR_HAUT);
+  const plafonne = niveauProgression === 'stagne' || niveauProgression === 'régresse';
+  if(chargeMonte && fatigueHaute && plafonne){
+    const cible = chargeHebdoActuelle != null ? Math.round(chargeHebdoActuelle * DELOAD_RATIO) : null;
+    return { actif: true, cls: 'v-baisse', titre: 'Semaine d\'allègement conseillée', cible,
+      e: `${semainesMontantes + 1} semaines de charge en hausse, fatigue installée et progression à l'arrêt : une semaine d'allègement (~50-60 % du volume${cible != null ? `, ≈ ${cible} de tonnage` : ''}) relancera la surcompensation, puis tu repars plus fort.` };
   }
   return { actif: false };
 }

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   chargeSeance, chargesParJour, zoneAcwr, monotonieStrain, serieCharge, pilotageCharge,
+  chargesHebdo, semainesMontantes,
   ACWR_BAS, ACWR_HAUT, ACWR_RISQUE,
 } from '../js/charge.js';
 
@@ -82,4 +83,28 @@ test('serieCharge : points dans la fenêtre, dernière valeur = photo pilotage',
   // cohérence avec pilotageCharge (même EWMA finale)
   const p = pilotageCharge(seances, REF);
   assert.ok(Math.abs(s[s.length - 1].aigue - p.aigue) < 1e-9);
+});
+
+/* ---- chargesHebdo / semainesMontantes (F2 deload) ---- */
+test('chargesHebdo : 4 blocs de 7 j terminant à refISO, ancienne → récente', () => {
+  // une séance par semaine, tonnage croissant 100/200/300/400
+  const seances = [seance(jour(-21), 100), seance(jour(-14), 200), seance(jour(-7), 300), seance(jour(0), 400)];
+  const h = chargesHebdo(seances, REF, 4);
+  assert.equal(h.length, 4);
+  assert.deepEqual(h.map(w => w.charge), [100, 200, 300, 400]);
+  assert.equal(h[3].finSemaine, REF);
+});
+test('chargesHebdo : jours d\'une même semaine cumulés ; semaine vide = 0', () => {
+  const seances = [seance(jour(-1), 100), seance(jour(-3), 50)];   // tous dans la semaine 0
+  const h = chargesHebdo(seances, REF, 4);
+  assert.deepEqual(h.map(w => w.charge), [0, 0, 0, 150]);
+});
+test('semainesMontantes : 4 semaines croissantes → 3 hausses', () => {
+  assert.equal(semainesMontantes([{charge:100},{charge:200},{charge:300},{charge:400}]), 3);
+});
+test('semainesMontantes : une baisse casse la série (compte depuis la fin)', () => {
+  assert.equal(semainesMontantes([{charge:100},{charge:90},{charge:200},{charge:300}]), 2);
+});
+test('semainesMontantes : semaine à 0 casse la série', () => {
+  assert.equal(semainesMontantes([{charge:100},{charge:0},{charge:300}]), 0);
 });

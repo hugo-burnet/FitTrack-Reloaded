@@ -20,9 +20,10 @@
    Pur et sans DOM (testable comme stats/xp/charge/scores). */
 
 import { jourLocal, aujourdHui } from './utils.js';
-import { pilotageCharge, ACWR_BAS, ACWR_HAUT, ACWR_RISQUE } from './charge.js';
+import { pilotageCharge, chargesHebdo, semainesMontantes, ACWR_BAS, ACWR_HAUT, ACWR_RISQUE } from './charge.js';
 import { bilanForce } from './bilan.js';
 import { meilleurE1rm } from './progression.js';
+import { detecterDeload } from './scores.js';
 import { xpSeance } from './xp.js';
 
 const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
@@ -211,6 +212,23 @@ export function readinessDuJour(etat, refISO = aujourdHui()){
     forme: ff.forme, fitness: ff.fitness,
     acwr: p.acwr,
     delaiSollicitation: delaiDerniereSeance(seances, refISO),
+  });
+}
+
+/* deload du jour : assemble les signaux (charge montante, forme/ACWR, progression) et
+   délègue au détecteur pur. `progression` = sortie de scoreProgression (réutilisée par l'UI
+   pour ne pas recalculer). Renvoie {actif, ...} façon alerte. */
+export function deloadDuJour(etat, refISO = aujourdHui(), progression = null){
+  const seances = etat && etat.seances;
+  const ff = fitnessFatigue(seances, refISO);
+  const p = pilotageCharge(seances, refISO);
+  const hebdo = chargesHebdo(seances, refISO, 4);
+  const prog = progression || scoreProgression(seances, refISO);
+  return detecterDeload({
+    semainesMontantes: semainesMontantes(hebdo),
+    forme: ff.forme, fitness: ff.fitness, acwr: p.acwr,
+    niveauProgression: prog && prog.niveau,
+    chargeHebdoActuelle: hebdo.length ? hebdo[hebdo.length - 1].charge : null,
   });
 }
 

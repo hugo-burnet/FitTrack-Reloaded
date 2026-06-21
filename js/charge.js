@@ -98,6 +98,30 @@ export function serieCharge(seances, refISO = aujourdHui(), joursAffiches = 84){
   return iterEwma(parJour, debut, refISO).filter(p => p.date >= debutAffiche);
 }
 
+/* charge hebdomadaire sur les `nbSemaines` derniers blocs de 7 jours terminant à refISO.
+   Renvoie [{finSemaine, charge}] de la plus ANCIENNE à la plus RÉCENTE (sert au deload F2). */
+export function chargesHebdo(seances, refISO = aujourdHui(), nbSemaines = 4){
+  const parJour = chargesParJour(seances);
+  const out = [];
+  for(let w = nbSemaines - 1; w >= 0; w--){
+    let somme = 0;
+    for(let d = 0; d < 7; d++) somme += parJour[ajouterJours(refISO, -(w * 7 + d))] || 0;
+    out.push({ finSemaine: ajouterJours(refISO, -(w * 7)), charge: somme });
+  }
+  return out;
+}
+
+/* nb de hausses consécutives de charge hebdo terminant à la dernière semaine (montée
+   d'accumulation). 4 semaines strictement croissantes → 3. Semaines à 0 cassent la série. */
+export function semainesMontantes(hebdo){
+  let k = 0;
+  for(let i = (hebdo || []).length - 1; i > 0; i--){
+    if(hebdo[i].charge > hebdo[i - 1].charge && hebdo[i - 1].charge > 0) k++;
+    else break;
+  }
+  return k;
+}
+
 /* photo de pilotage au jour de référence : aiguë, chronique, ACWR, zone, monotonie/strain.
    acwr/zone valent null/'inconnue' tant que la charge chronique est nulle (pas d'historique). */
 export function pilotageCharge(seances, refISO = aujourdHui()){
