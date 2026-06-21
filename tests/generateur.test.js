@@ -62,7 +62,8 @@ test('genererMenu : faciliteSeulement n\'emploie que des aliments faciles', () =
 });
 
 test('genererMenu : cible irréaliste → saturations signalées, jamais d\'échec ni de NaN', () => {
-  const extreme = { kcal: 6000, prot: 400, gluc: 800, lip: 150, fib: 60 };
+  /* cible volontairement hors d'atteinte même avec le pool étendu (≈ 12 000 kcal) */
+  const extreme = { kcal: 12000, prot: 800, gluc: 1600, lip: 350, fib: 200 };
   const r = genererMenu(extreme, { faciliteSeulement: true });
   assert.ok(r.saturations.length > 0, 'doit signaler la saturation');
   assert.ok(Number.isFinite(r.macros.kcal) && r.macros.prot > 0);
