@@ -7,6 +7,7 @@ import { moyennesHebdo } from '../stats.js';
 import { calculerBesoins, frequenceHebdo, OBJECTIFS } from '../besoins.js';
 import { genererMenu, ajusterMenu } from '../generateur.js';
 import { POOL_GENERATEUR } from '../data/generateur-pool.js';
+import { REGIMES } from '../regimes.js';
 import { repasActifs, menuActif } from '../plans.js';
 import { qteAjustee as qteAjusteePure, macrosRepas as macrosRepasPure,
   entreesDuJour, extras as extrasHorsPlan, consomme as consommeJournal,
@@ -173,6 +174,8 @@ export class RepasModule {
       if(e.target.closest('#btn-gen-toggle')){ this.basculerGen(); return; }
       const genChip = e.target.closest('#gen-prefs [data-gen-cle]');
       if(genChip){ this.cyclerPrefGen(genChip.dataset.genCle); return; }
+      const regChip = e.target.closest('#gen-regimes [data-regime]');
+      if(regChip){ this.cyclerRegime(regChip.dataset.regime); return; }
       if(e.target.closest('#btn-gen-lancer')){ this.genererMenuAuto(); return; }
       if(e.target.closest('#btn-gen-ajuster')){ this.ajusterMenuActuel(); return; }
       if(e.target.closest('#btn-asst')){ this.ouvrirAssistant(); return; }
@@ -209,6 +212,7 @@ export class RepasModule {
       const obj = e.target.closest('[data-asst-obj]'); if(obj){ this.asstChoisirObjectif(obj.dataset.asstObj); return; }
       const fac = e.target.closest('[data-asst-facile]'); if(fac){ this.asstSetFacile(fac.dataset.asstFacile === '1'); return; }
       if(e.target.closest('[data-asst-ajuster]')){ this.fermerAssistant(); this.ajusterMenuActuel(); return; }
+      const reg = e.target.closest('[data-regime]'); if(reg){ this.cyclerRegime(reg.dataset.regime); return; }
       const chip = e.target.closest('[data-gen-cle]'); if(chip){ this.cyclerPrefGen(chip.dataset.genCle); return; }
     });
   }
@@ -735,6 +739,21 @@ export class RepasModule {
     if(this.asstOuvert) this.renderAsst(); else this.renderGen();
   }
 
+  /* tap sur un régime/allergie : on/off (persisté dans preferencesAlim.regimes) */
+  cyclerRegime(cle){
+    const p = this.etat.preferencesAlim;
+    if(!Array.isArray(p.regimes)) p.regimes = [];
+    p.regimes = p.regimes.includes(cle) ? p.regimes.filter(r => r !== cle) : [...p.regimes, cle];
+    this.store.sauver();
+    if(this.asstOuvert) this.renderAsst(); else this.renderGen();
+  }
+  /* chips des régimes (réutilisé carte + assistant), marqués actifs */
+  chipsRegimes(){
+    const actifs = this.etat.preferencesAlim.regimes || [];
+    return REGIMES.map(r =>
+      `<button type="button" class="gen-chip${actifs.includes(r.cle) ? ' aime' : ''}" data-regime="${echap(r.cle)}">${echap(r.nom)}</button>`).join('');
+  }
+
   genererMenuAuto(){
     const c = this.cibleGen();
     if(!c.valide){
@@ -743,7 +762,7 @@ export class RepasModule {
       return;
     }
     const p = this.etat.preferencesAlim;
-    const res = genererMenu(c.cibles, { aimes:p.aimes, evites:p.evites, faciliteSeulement:p.faciliteSeulement });
+    const res = genererMenu(c.cibles, { aimes:p.aimes, evites:p.evites, faciliteSeulement:p.faciliteSeulement, regimes:p.regimes });
     const nom = `${this.OBJ_LIB[this.objectifCourant()]} auto`;
     const id = 'm' + Date.now();
     this.etat.plansAlim.push({ id, nom, repas: res.repas.map(r => ({ id:r.id, nom:r.nom, items:r.items.map(([cle, q]) => [cle, q]) })) });
@@ -779,6 +798,7 @@ export class RepasModule {
     return [
       { type:'objectif' },
       { type:'facile' },
+      { type:'regimes' },
       { type:'role', role:'prot',  q:'Tes sources de protéines préférées ?' },
       { type:'role', role:'gluc',  q:'Tes féculents / glucides préférés ?' },
       { type:'role', role:'lip',   q:'Tes sources de bon gras ?' },
@@ -827,6 +847,10 @@ export class RepasModule {
           ${opt(1, 'Non, le plus simple', 'zéro prépa · cuiseur à riz · airfryer')}
           ${opt(0, 'Oui, peu importe', 'tous les aliments du pool')}
         </div>`;
+    } else if(step.type === 'regimes'){
+      corps.innerHTML = `<h3 class="asst-q">Régimes ou allergies ?</h3>
+        <p class="note" style="margin:0 0 10px">Touche pour activer. Les aliments concernés seront <b>exclus</b> du menu. Tu peux ne rien cocher.</p>
+        <div class="gen-chips">${this.chipsRegimes()}</div>`;
     } else if(step.type === 'role'){
       corps.innerHTML = `<h3 class="asst-q">${echap(step.q)}</h3>
         <p class="note" style="margin:0 0 10px">1 tap = <span class="gen-leg aime">j'aime</span>, 2 taps = <span class="gen-leg evite">à éviter</span>, 3 taps = neutre. Tu peux ne rien cocher.</p>
@@ -838,7 +862,7 @@ export class RepasModule {
       if(c.valide){ const t = c.cibles; cibleTxt = `<div class="asst-cible mono">${t.kcal} kcal · P ${t.prot} / G ${t.gluc} / L ${t.lip} g · fibres ${t.fib} g</div>`; }
       else { const lib = { sexe:'sexe', age:'âge', stature:'taille', poids:'une pesée' }; cibleTxt = `<p class="note" style="color:var(--alerte)">Complète d'abord ${c.manque.map(m => lib[m] || m).join(', ')} dans le calculateur de besoins.</p>`; }
       corps.innerHTML = `<h3 class="asst-q">C'est prêt !</h3>
-        <p class="note" style="margin:0 0 6px">Objectif <b>${echap(this.OBJ_LIB[this.objectifCourant()])}</b> · ${p.faciliteSeulement ? 'plats faciles' : 'tous aliments'} · ${p.aimes.length} aimé(s), ${p.evites.length} évité(s).</p>
+        <p class="note" style="margin:0 0 6px">Objectif <b>${echap(this.OBJ_LIB[this.objectifCourant()])}</b> · ${p.faciliteSeulement ? 'plats faciles' : 'tous aliments'} · ${p.aimes.length} aimé(s), ${p.evites.length} évité(s)${p.regimes && p.regimes.length ? ` · ${p.regimes.length} régime(s)` : ''}.</p>
         ${cibleTxt}
         <p class="note">« Générer mon menu » crée un nouveau menu « <b>${echap(this.OBJ_LIB[this.objectifCourant()])} auto</b> » et l'active.</p>
         <button type="button" class="btn btn-2" data-asst-ajuster style="margin-top:4px">Plutôt ajuster mon menu actuel</button>`;
@@ -869,6 +893,7 @@ export class RepasModule {
       elC.textContent = `Renseigne ${c.manque.map(m => lib[m] || m).join(', ')} dans le calculateur ci-dessus pour générer un menu ciblé.`;
     }
     const fac = $('gen-facile'); if(fac) fac.checked = !!this.etat.preferencesAlim.faciliteSeulement;
+    const reg = $('gen-regimes'); if(reg) reg.innerHTML = this.chipsRegimes();
     this.renderGenPrefs();
     this.renderGenResultat();
   }

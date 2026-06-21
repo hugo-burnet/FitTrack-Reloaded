@@ -26,10 +26,11 @@ test('fusion : état du jour réconcilié par date, l\'entrant gagne sur collisi
 
 test('fusion : goûts alimentaires fusionnés (union, évité gagne, facilité à l\'entrant)', () => {
   const etat = etatParDefaut();
-  etat.preferencesAlim = { aimes:['poulet-blanc','riz'], evites:['oeuf'], faciliteSeulement:true };
-  fusionnerEtat(etat, { preferencesAlim:{ aimes:['skyr','riz'], evites:['saumon'], faciliteSeulement:false } });
+  etat.preferencesAlim = { aimes:['poulet-blanc','riz'], evites:['oeuf'], faciliteSeulement:true, regimes:['sans-gluten'] };
+  fusionnerEtat(etat, { preferencesAlim:{ aimes:['skyr','riz'], evites:['saumon'], faciliteSeulement:false, regimes:['vegan'] } });
   assert.deepEqual(etat.preferencesAlim.aimes.sort(), ['poulet-blanc','riz','skyr']);   /* union */
   assert.deepEqual(etat.preferencesAlim.evites.sort(), ['oeuf','saumon']);               /* union */
+  assert.deepEqual(etat.preferencesAlim.regimes.sort(), ['sans-gluten','vegan']);        /* union régimes */
   assert.equal(etat.preferencesAlim.faciliteSeulement, false);                           /* entrant gagne */
 
   /* un aliment évité par l'entrant l'emporte sur un aimé local */

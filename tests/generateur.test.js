@@ -70,6 +70,20 @@ test('genererMenu : cible irréaliste → saturations signalées, jamais d\'éch
   assert.ok(r.repas.length > 0);
 });
 
+test('genererMenu : `regimes` est un filtre dur (végan → ni viande/poisson/laitage/œuf)', () => {
+  const r = genererMenu(CIBLES, { faciliteSeulement: true, regimes: ['vegan'] });
+  const interdits = ['poulet-blanc', 'dinde-blanc', 'boeuf-hache-5', 'saumon', 'thon-naturel', 'crevette',
+    'skyr', 'yaourt-grec', 'oeuf', 'blanc-oeuf', 'whey', 'caseine'];
+  for(const cle of clesDe(r)) assert.ok(!interdits.includes(cle), `${cle} ne devrait pas être dans un menu végan`);
+});
+
+test('genererMenu : sans-gluten + sans-fruits-coque exclut pain/avoine/amandes', () => {
+  const r = genererMenu(CIBLES, { faciliteSeulement: true, regimes: ['sans-gluten', 'sans-fruits-coque'] });
+  const cles = clesDe(r);
+  for(const cle of ['pain-complet', 'pain-blanc', 'avoine', 'muesli', 'amandes', 'noix', 'pb'])
+    assert.ok(!cles.includes(cle), `${cle} exclu`);
+});
+
 test('genererMenu : robuste à des options vides / absentes', () => {
   assert.doesNotThrow(() => genererMenu(CIBLES));
   assert.doesNotThrow(() => genererMenu(CIBLES, { aimes: [], evites: [] }));

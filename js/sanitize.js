@@ -7,6 +7,7 @@
    invalides et on renvoie des données propres, pour que le rendu ne crashe jamais. */
 
 import { ALIMENTS } from './data.js';
+import { REGIMES_CLES } from './regimes.js';
 
 export function estNombre(x){ return typeof x === 'number' && isFinite(x); }
 export function estChaine(x){ return typeof x === 'string'; }
@@ -133,11 +134,12 @@ export function assainirEtatsJour(arr){
    On ne garde que des clés-chaînes (non validées contre la base : un aliment perso est permis) ;
    un même aliment ne peut être à la fois aimé et évité (évité prioritaire). Jamais d'exception. */
 export function assainirPreferencesAlim(p){
-  if(!p || typeof p !== 'object') return { aimes:[], evites:[], faciliteSeulement:true };
+  if(!p || typeof p !== 'object') return { aimes:[], evites:[], faciliteSeulement:true, regimes:[] };
   const cles = arr => Array.isArray(arr) ? [...new Set(arr.filter(c => estChaine(c) && c))] : [];
   const evites = cles(p.evites);
   const aimes = cles(p.aimes).filter(c => !evites.includes(c));   /* évité gagne sur aimé */
-  return { aimes, evites, faciliteSeulement: p.faciliteSeulement !== false };
+  const regimes = cles(p.regimes).filter(c => REGIMES_CLES.includes(c));   /* régimes/allergies connus seulement */
+  return { aimes, evites, faciliteSeulement: p.faciliteSeulement !== false, regimes };
 }
 
 /* ---- aliments perso (E2) : {cle: {nom, cat, kcal100, prot100, gluc100, lip100, fib100}} ----

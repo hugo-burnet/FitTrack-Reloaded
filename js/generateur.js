@@ -19,6 +19,7 @@
 import { ALIMENTS } from './data.js';
 import { kcalItem, protItem, glucItem, lipItem, fibItem } from './nutrition.js';
 import { POOL_GENERATEUR, REPAS_STRUCTURE, PREP_FACILES } from './data/generateur-pool.js';
+import { satisfaitRegimes } from './regimes.js';
 
 const ROLES = ['prot', 'gluc', 'lip', 'fibre'];
 const MAX_PAR_ROLE = { prot: 3, gluc: 2, lip: 2, fibre: 2 };
@@ -81,8 +82,10 @@ function bilan(allEntries, cibles, aliments){
 }
 
 /* ================= GÉNÉRATION (menu neuf depuis le pool) ================= */
-function selectionner(pool, { aimes, evites, faciliteSeulement }){
-  let dispo = pool.filter(e => ALIMENTS[e.cle]);
+function selectionner(pool, { aimes, evites, faciliteSeulement, regimes }){
+  /* régimes/allergies = filtre DUR (l'aliment exclu ne réapparaît jamais, même en repli) */
+  const okRegime = e => satisfaitRegimes(e.cle, regimes, ALIMENTS);
+  let dispo = pool.filter(e => ALIMENTS[e.cle] && okRegime(e));
   if(faciliteSeulement) dispo = dispo.filter(e => PREP_FACILES.includes(e.prep));
   if(evites && evites.size) dispo = dispo.filter(e => !evites.has(e.cle));
 
@@ -90,8 +93,9 @@ function selectionner(pool, { aimes, evites, faciliteSeulement }){
   ROLES.forEach(role => {
     let cand = dispo.filter(e => e.role === role);
     if(!cand.length){
-      cand = pool.filter(e => e.role === role && ALIMENTS[e.cle]);
+      cand = pool.filter(e => e.role === role && ALIMENTS[e.cle] && okRegime(e));
       if(cand.length) notes.push(`Rôle « ${role} » indisponible avec tes filtres : repli sur le pool.`);
+      else notes.push(`Aucun aliment « ${role} » compatible avec tes régimes : ce macro restera incomplet.`);
     }
     const aime = e => aimes.has(e.cle);
     cand = [...cand.filter(aime), ...cand.filter(e => !aime(e))];
@@ -113,7 +117,8 @@ export function genererMenu(cibles, options = {}){
   const pool = options.pool || POOL_GENERATEUR;
   const aimes = new Set(options.aimes || []);
   const evites = new Set(options.evites || []);
-  const { choisis, notes } = selectionner(pool, { aimes, evites, faciliteSeulement: !!options.faciliteSeulement });
+  const regimes = options.regimes || [];
+  const { choisis, notes } = selectionner(pool, { aimes, evites, faciliteSeulement: !!options.faciliteSeulement, regimes });
   assurerCapacite('prot', choisis.prot, cibles.prot);
   assurerCapacite('gluc', choisis.gluc, cibles.gluc);
   assurerCapacite('lip',  choisis.lip,  cibles.lip);

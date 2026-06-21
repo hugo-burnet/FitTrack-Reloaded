@@ -268,3 +268,23 @@ corrélations) sont en place, tous en moteurs purs testés et en dégradé graci
   la capacité du pool ayant augmenté).
 - [x] **334 → 341 tests verts.** `sw.js` v35 → v36. Vérif navigateur (CDP, cache désactivé) :
   chips du générateur = 81 (28/18/13/22 par rôle), zéro erreur console.
+
+---
+
+## Nutri — Régimes & allergies (branche `nutri-regimes`) ✅ FAIT
+- [x] **Moteur** `js/regimes.js` : 8 régimes (végétarien, végan, sans gluten/lactose/fruits à
+  coque/poisson/œuf/soja). `violationsAliment` déduit les contraintes d'un aliment par catégorie
+  + ensembles curés (œuf vs laitage, poudres laitières whey/caséine, graines ≠ fruits à coque,
+  soja, gluten, miel) ; `satisfaitRegimes`. Pur. **+12 tests.**
+- [x] **Générateur** : `genererMenu(options.regimes)` applique un **filtre dur** au pool (dispo +
+  repli) → jamais d'aliment interdit, même en repli. **+2 tests.**
+- [x] **État** : `preferencesAlim.regimes` (defaults + Store + `assainirPreferencesAlim` qui ne
+  garde que les régimes connus). **Sync** : `fusion.js` étendu — régimes ajoutés à l'**union** de
+  `preferencesAlim` (même sémantique qu'aimés/évités), **validé explicitement** le 2026-06-21.
+  Tests sanitize + fusion mis à jour.
+- [x] **UI** : carte générateur (« Réglage manuel ») — bloc « Régimes & allergies » (8 chips
+  on/off) ; **assistant guidé** — nouvelle étape « Régimes ou allergies ? » (entre « cuisiner ? »
+  et les goûts) ; récap qui compte les régimes. `cyclerRegime` + `chipsRegimes` (réutilisés
+  carte + assistant).
+- [x] **341 → 356 tests verts.** `sw.js` v36 → v37 (+ `regimes.js` précaché). Vérif navigateur
+  (CDP, cache désactivé) : 8 chips carte + assistant, toggle végan persisté, zéro erreur console.

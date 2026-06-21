@@ -43,7 +43,7 @@ export function etatParDefaut(){
     etatsJour: [],
     /* goûts alimentaires (générateur de menus) : aimés/évités (clés d'aliments) + plats faciles
        uniquement. Pilotent genererMenu (generateur.js). */
-    preferencesAlim: { aimes: [], evites: [], faciliteSeulement: true },
+    preferencesAlim: { aimes: [], evites: [], faciliteSeulement: true, regimes: [] },
     journalRepas: [],
     programmes: cloneProfond(PROG_DEFAUT),
     programmeActif: PROG_DEFAUT[0].id,

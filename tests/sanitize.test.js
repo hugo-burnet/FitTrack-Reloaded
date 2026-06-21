@@ -145,8 +145,14 @@ test('assainirPreferencesAlim : clés-chaînes dédoublonnées, évité gagne su
   assert.deepEqual(p.aimes, ['poulet-blanc']);     /* dédoublonné, oeuf retiré (évité), 42 ignoré */
   assert.deepEqual(p.evites, ['oeuf']);
   assert.equal(p.faciliteSeulement, false);
-  assert.deepEqual(assainirPreferencesAlim(null), { aimes:[], evites:[], faciliteSeulement:true });
+  assert.deepEqual(assainirPreferencesAlim(null), { aimes:[], evites:[], faciliteSeulement:true, regimes:[] });
   assert.equal(assainirPreferencesAlim({}).faciliteSeulement, true);   /* défaut = facile */
+});
+
+test('assainirPreferencesAlim : ne garde que les régimes connus', () => {
+  const p = assainirPreferencesAlim({ regimes:['vegan','sans-gluten','regime-bidon','vegan',7] });
+  assert.deepEqual(p.regimes.sort(), ['sans-gluten','vegan']);   /* dédoublonné, inconnu/non-chaîne retirés */
+  assert.deepEqual(assainirPreferencesAlim({}).regimes, []);
 });
 
 test('assainirEtat : ne lève jamais et purge en place', () => {
