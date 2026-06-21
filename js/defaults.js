@@ -41,6 +41,9 @@ export function etatParDefaut(){
     /* état du jour (V4-F1) : récup quotidienne {date, sommeil(h), courbatures(0-10)}.
        Alimente les scores Readiness/Recovery (readiness.js). Dégradé gracieux : vide = scores indicatifs. */
     etatsJour: [],
+    /* goûts alimentaires (générateur de menus) : aimés/évités (clés d'aliments) + plats faciles
+       uniquement. Pilotent genererMenu (generateur.js). */
+    preferencesAlim: { aimes: [], evites: [], faciliteSeulement: true },
     journalRepas: [],
     programmes: cloneProfond(PROG_DEFAUT),
     programmeActif: PROG_DEFAUT[0].id,

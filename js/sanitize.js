@@ -129,6 +129,17 @@ export function assainirEtatsJour(arr){
     .map(e => ({ date: e.date, sommeil: num(e.sommeil), courbatures: num(e.courbatures, 10) }));
 }
 
+/* ---- goûts alimentaires (générateur de menus) : {aimes:[cle], evites:[cle], faciliteSeulement:bool} ----
+   On ne garde que des clés-chaînes (non validées contre la base : un aliment perso est permis) ;
+   un même aliment ne peut être à la fois aimé et évité (évité prioritaire). Jamais d'exception. */
+export function assainirPreferencesAlim(p){
+  if(!p || typeof p !== 'object') return { aimes:[], evites:[], faciliteSeulement:true };
+  const cles = arr => Array.isArray(arr) ? [...new Set(arr.filter(c => estChaine(c) && c))] : [];
+  const evites = cles(p.evites);
+  const aimes = cles(p.aimes).filter(c => !evites.includes(c));   /* évité gagne sur aimé */
+  return { aimes, evites, faciliteSeulement: p.faciliteSeulement !== false };
+}
+
 /* ---- aliments perso (E2) : {cle: {nom, cat, kcal100, prot100, gluc100, lip100, fib100}} ----
    On ne garde que les entrées dont le nom est une chaîne non vide ; les macros absentes
    ou invalides sont ramenées à 0 (jamais NaN). Renvoie toujours un objet. */
@@ -169,5 +180,6 @@ export function assainirEtat(etat){
     etat.aliments.perso = assainirAlimentsPerso(etat.aliments.perso);
   if('plats' in etat) etat.plats = assainirPlats(etat.plats);
   if('etatsJour' in etat) etat.etatsJour = assainirEtatsJour(etat.etatsJour);
+  if('preferencesAlim' in etat) etat.preferencesAlim = assainirPreferencesAlim(etat.preferencesAlim);
   return etat;
 }

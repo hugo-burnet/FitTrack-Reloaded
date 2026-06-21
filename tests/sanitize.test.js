@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   assainirEtat, assainirDates, serieValide, assainirSeance,
   assainirRepasPlan, assainirPlansAlim, assainirProgrammes, assainirJournalRepas, assainirCoursesItems,
-  assainirAlimentsPerso, assainirPlats, assainirEtatsJour,
+  assainirAlimentsPerso, assainirPlats, assainirEtatsJour, assainirPreferencesAlim,
 } from '../js/sanitize.js';
 
 /* Garde-fou sur le code défensif le plus critique (jusqu'ici non testé) :
@@ -138,6 +138,15 @@ test('assainirEtatsJour : date obligatoire, sommeil/courbatures ≥ 0 sinon null
   assert.deepEqual(out[1], { date:'2026-06-21', sommeil:null, courbatures:10 });
   assert.deepEqual(out[2], { date:'2026-06-22', sommeil:null, courbatures:null });
   assert.deepEqual(assainirEtatsJour('nope'), []);
+});
+
+test('assainirPreferencesAlim : clés-chaînes dédoublonnées, évité gagne sur aimé, facilité par défaut', () => {
+  const p = assainirPreferencesAlim({ aimes:['poulet-blanc','poulet-blanc','oeuf',42], evites:['oeuf',null], faciliteSeulement:false });
+  assert.deepEqual(p.aimes, ['poulet-blanc']);     /* dédoublonné, oeuf retiré (évité), 42 ignoré */
+  assert.deepEqual(p.evites, ['oeuf']);
+  assert.equal(p.faciliteSeulement, false);
+  assert.deepEqual(assainirPreferencesAlim(null), { aimes:[], evites:[], faciliteSeulement:true });
+  assert.equal(assainirPreferencesAlim({}).faciliteSeulement, true);   /* défaut = facile */
 });
 
 test('assainirEtat : ne lève jamais et purge en place', () => {
