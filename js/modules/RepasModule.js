@@ -769,6 +769,9 @@ export class RepasModule {
     this.dernierMenuGen = { ...res, _action: 'cree' };
     this.etat.planAlimActif = id;
     this.etat.repas.planJour = null;
+    /* reconnecte la cible kcal au menu généré : sinon le stepper reste sur une vieille valeur
+       et le flex (riz/avoine) rééchelonne le menu loin de ce que le générateur a calculé. */
+    this.etat.objectifKcal = Math.max(1600, Math.min(4000, Math.round(c.cibles.kcal)));
     this.store.sauver();
     toast(`Menu « ${nom} » créé et activé.`, 'ok');
     this.render();
@@ -787,6 +790,8 @@ export class RepasModule {
     const res = ajusterMenu(menu.repas, c.cibles, this.cat());   /* catalogue fusionné : gère les aliments perso */
     menu.repas = res.repas;
     this.etat.repas.planJour = null;
+    /* même reconnexion : la cible kcal suit le menu ajusté (cohérence cible ↔ quantités) */
+    this.etat.objectifKcal = Math.max(1600, Math.min(4000, Math.round(c.cibles.kcal)));
     this.dernierMenuGen = { ...res, _action: 'ajuste' };
     this.store.sauver();
     toast(`Menu « ${menu.nom} » ajusté à ta cible.`, 'ok');
