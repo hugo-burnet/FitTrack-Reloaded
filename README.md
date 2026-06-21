@@ -21,6 +21,8 @@ L'arbre est **paramétré par ton objectif** (sèche / recompo / prise de masse)
 
 **Forme du jour** (récupération & readiness) : tu notes ton **sommeil** et tes **courbatures** du jour, et — en option — la **durée** et l'**effort (RPE)** de chaque séance. L'app en tire trois scores 0-100 : **Readiness** (prospectif, « peux-tu pousser aujourd'hui ? » → feu vert / allège / repos), croisant sommeil, courbatures, **forme** (fitness−fatigue, modèle de Banister réutilisant les EWMA de charge) et ACWR ; **Récupération** (rétrospectif) ; et **Progression** (tendance de tes records e1RM + fréquence de PR + volume). Plus une **alerte de stagnation** quand la force plafonne malgré une bonne assiduité. Toujours indicatif tant que les entrées manquent — jamais bloquant.
 
+**Recommandations (surcharge progressive)** : une **semaine d'allègement (deload)** est proposée quand trois signaux convergent — charge hebdo qui monte depuis plusieurs semaines, fatigue installée (forme négative ou ACWR hors zone) **et** progression à l'arrêt. Une carte **« Volume par groupe musculaire »** compte tes **séries de travail/semaine** par groupe (déduit du nom d'exercice) et signale les groupes **sous- ou sur-dosés** face au repère hypertrophie (10-20 séries/sem).
+
 Sous le verdict, un read **« Cette semaine »** entre deux verdicts mensuels : tendance lissée, **adhérence protéines (jours à la cible / 7)** et **séances sur 7 j**, plus une alerte **« force en baisse »** quand le 1RM estimé décroche sur plusieurs exercices récents — signal précoce de sous-alimentation.
 
 ### 🍽️ Repas
@@ -37,7 +39,7 @@ Plan alimentaire du jour avec **objectif kcal ajustable**. Protéines/lipides fi
 ### 🏋️ Muscu
 Le cœur de l'app, pensé pour la **surcharge progressive « 0 doute »** :
 
-- **Objectif par exercice** : à partir de ta dernière perf, l'app te dit exactement quoi faire — monter la charge, gratter des reps, consolider ou faire un deload. La barre d'objectif te dit quand monter la charge.
+- **Objectif par exercice** : à partir de ta dernière perf, l'app te dit exactement quoi faire — monter la charge, gratter des reps, consolider ou faire un deload. La barre d'objectif te dit quand monter la charge. La reco est **contextualisée par ta forme du jour** : un jour « rouge », elle ne te propose jamais de monter la charge (refais propre, ou récup).
 - **Système d'XP & de niveaux** : l'XP n'est gagné **que si tu progresses**. Un exercice ne rapporte son XP (proportionnel au travail : charge × reps ; poids du corps au forfait ; unilatéral compté des deux côtés) que s'il a fait **mieux que sa dernière séance sur la globalité des séries** — c.-à-d. **plus de volume** (≥ +1 rep) **ou** un **meilleur 1RM estimé** (≥ +1 kg, même si les reps baissent un peu). Sinon : 0 XP. Un **niveau global** (titre de palier : Débutant → Légende) et un **niveau par exercice** (badge **Niv.**, courbe plus douce) en découlent, via une courbe en puissance où chaque palier coûte plus que le précédent. Le **gain d'XP** et les **montées de niveau** s'affichent dans le recap de fin de séance.
 - **Double progression** correcte : distingue *3 séries droites à 40 kg* (→ on monte) de *40 / 38 / 35 dégressif* (→ consolide d'abord). Le détail **série par série** (charges variables incluses) est affiché partout, jamais collapsé sur la charge max.
 - **Unilatéral** déclarable à la saisie : la charge tapée est alors comprise comme **un seul côté** (affichée « X kg/côté »), et le volume compte les deux côtés.
@@ -46,7 +48,7 @@ Le cœur de l'app, pensé pour la **surcharge progressive « 0 doute »** :
 - **Repos conseillé dynamique** (déduit de la fourchette de reps) + **chrono de repos in-app** (compte à rebours, +15 s / pause, bip + vibration), **proposé automatiquement** dès qu'une série est saisie. **Wake lock** : l'écran reste allumé pendant la séance.
 - **1RM estimé fiable** : les reps sont plafonnées à 12 dans l'estimation Epley (au-delà la formule devient bruitée), pour des deltas de force lisibles.
 - **Suppression de série**, **éditeur de programmes** complet.
-- **Recap de séance** après enregistrement (deltas 1RM/charge, hausses **et** baisses) + **courbes de progression** (1RM estimé Epley + volume), points colorés selon la tendance.
+- **Recap de séance** après enregistrement (deltas 1RM/charge, hausses **et** baisses) + **courbes de progression** (1RM estimé Epley + volume), points colorés selon la tendance. Sous la courbe, une **projection** extrapole ton rythme récent (régression sur l'e1RM) et estime l'**ETA de ta prochaine marche** (+2,5 / +5 kg) avec une bande d'incertitude.
 - Clic sur un objectif → **détail repliable des séances précédentes**.
 - **Brouillon auto** : la saisie en cours survit à la navigation et au rechargement. L'historique des séances n'est **jamais** réinitialisé.
 
@@ -81,7 +83,7 @@ Sur **GitHub Pages**, aucune manipulation : les modules ES sont servis en HTTP, 
 
 ## Tests
 
-Les moteurs purs sont couverts par des tests unitaires (**244 tests**), via le **runner natif de Node** — aucune dépendance à installer :
+Les moteurs purs sont couverts par des tests unitaires (**316 tests**), via le **runner natif de Node** — aucune dépendance à installer :
 
 ```bash
 npm test          # ou : node --test
@@ -96,9 +98,11 @@ Cibles :
 - `besoins.js` — BMR / TDEE / split macros (calculateur).
 - `generateur.js` / `generateur-pool.js` — génération **et ajustement en place** d’un menu visant les 3 macros, selon goûts & facilité.
 - `verdict.js` — l'arbre de décision pour chaque objectif (sèche/recompo/masse) + anti-réactivité.
-- `charge.js` — charge aiguë/chronique, ACWR & zones, monotonie/strain, série.
-- `scores.js` — Compliance, Risk, alertes surcharge / sous-charge / stagnation.
-- `readiness.js` — sRPE (Foster), fitness-fatigue (Banister), scores Readiness / Recovery / Progression.
+- `charge.js` — charge aiguë/chronique, ACWR & zones, monotonie/strain, série, charge hebdo.
+- `scores.js` — Compliance, Risk, alertes surcharge / sous-charge / stagnation, deload détecté.
+- `readiness.js` — sRPE (Foster), fitness-fatigue (Banister), scores Readiness / Recovery / Progression, reco contextualisée.
+- `projection.js` — régression e1RM, pente kg/sem, ETA d'un objectif + bande d'incertitude.
+- `volume.js` — groupe musculaire (heuristique), volume hebdo de séries par groupe vs repères.
 - `bilan.js` — `adherenceHebdo`, `bilanForce`. · `xp.js` — XP, niveaux, gating de progression.
 - `migrations.js` / `sanitize.js` / `defaults.js` / `fusion.js` — schéma 1→7, assainissement, fusion par date/id/clé.
 - `RepasModule` — moteur de comblement protéique.
@@ -142,9 +146,11 @@ js/
   besoins.js          calculateur BMR → TDEE → cible kcal/macros (E5)
   generateur.js       génération de menu adapté (cibles macros + goûts)
   verdict.js          arbre de décision multi-objectif (sèche/recompo/masse)
-  charge.js           pilotage de charge (aiguë/chronique, ACWR, monotonie/strain)
-  scores.js           scores composites (Risque, Assiduité) + alertes
-  readiness.js        récup & readiness (fitness-fatigue, Readiness/Recovery/Progression)
+  charge.js           pilotage de charge (aiguë/chronique, ACWR, monotonie/strain, hebdo)
+  scores.js           scores composites (Risque, Assiduité) + alertes + deload détecté
+  readiness.js        récup & readiness (fitness-fatigue, Readiness/Recovery/Progression, reco contextualisée)
+  projection.js       projection de progression (régression e1RM, ETA + incertitude)
+  volume.js           volume par groupe musculaire vs repères 10-20 séries/sem
   bilan.js            reads hebdo (adhérence, signal de force)
   charts.js           config Chart.js partagée
   RestTimer.js        chrono de repos

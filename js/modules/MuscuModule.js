@@ -9,6 +9,8 @@ import {
   tousLesExos as tousLesExosP, fmtPerf as fmtPerfP, brouillonDerniere, permuterExo,
   construireRecap as construireRecapP, serieProgression
 } from '../muscu-perf.js';
+import { readinessDuJour, recoContextuelle } from '../readiness.js';
+import { projeterExercice, etaObjectif } from '../projection.js';
 
 /* couleur d'un point de progression selon sa tendance vs le point précédent
    (vert = monte, rouge = baisse, bleu = stable / premier point / indéfini) */
@@ -231,12 +233,14 @@ export class MuscuModule {
     if(jour.exercices.some(ex=>this.dernierePerf(ex.nom)))
       html += `<button class="btn btn-2" data-action="prefill-derniere" style="margin-bottom:6px">↩ Comme la dernière fois</button>`;
 
+    /* readiness du jour → tempère la reco de charge (jamais de +charge un jour rouge, V4-F2) */
+    const feuJour = readinessDuJour(this.etat).feu;
     html += jour.exercices.map((ex,ei)=>{
       const presc = ex.gainage
         ? `${ex.series} × maintien${ex.dureeCible?' '+ex.dureeCible+' s':''}${ex.note?' · '+ex.note:''}`
         : `${ex.series} × ${ex.reps}${ex.note?' · '+ex.note:''}`;
       const last = this.dernierePerf(ex.nom);
-      const reco = recommander(ex, last ? last.series : null);
+      const reco = recoContextuelle(recommander(ex, last ? last.series : null), feuJour);
       const xpExo = xpExerciceTotal(this.etat.seances, ex.nom);
       const nivExo = infosNiveau(xpExo, XP_BASE_EXO);
       const repos = reposRecommande(ex);
@@ -255,6 +259,7 @@ export class MuscuModule {
       const histoOpen = this.histoOuverte.has(ex.nom);
       const objectif = `<div class="exo-objectif ton-${reco.ton}${histoOpen?' ouvert':''}" data-action="toggle-historique" data-exo="${ei}" role="button" tabindex="0" aria-expanded="${histoOpen}">
           <div class="obj-haut"><span class="obj-tag">Objectif</span><span class="obj-msg">${echap(reco.message)}</span><span class="obj-caret">${histoOpen?'▾':'▸'}</span></div>
+          ${reco.noteReadiness ? `<div class="obj-readiness${reco.tempere?' tempere':''}">${echap(reco.noteReadiness)}</div>` : ''}
           ${reco.xp!=null ? `<div class="xp-barre"><div class="xp-rempli" style="width:${reco.xp}%"></div></div>` : ''}
         </div>`;
       const histoPanel = histoOpen ? this.renderHistoPanel(ex, ei) : '';
@@ -519,6 +524,7 @@ export class MuscuModule {
     /* données de la série (pur muscu-perf.js) : points triés + tendance ; ici on ne fait que dessiner */
     const { pts, labelMesure, labelVol } = serieProgression(this.etat.seances, nom);
     const couleursPts = pts.map(p => TENDANCE_COULEUR[p.tendance] || TENDANCE_COULEUR.none);
+    this.renderProjection(nom);
     const ctx = $('graph-prog');
     if(this.chProg) this.chProg.destroy();
     this.chProg = new Chart(ctx,{type:'line',data:{labels:pts.map(p=>fmtDate(p.date)),datasets:[
@@ -527,6 +533,38 @@ export class MuscuModule {
     ]},options:{...optCommun,scales:{...optCommun.scales,
       y2:{position:'right',ticks:{color:'#9aa1ab',font:{family:'Inter, system-ui, sans-serif',size:11}},grid:{display:false}}
     }}});
+  }
+
+  /* ---- projection de progression (V4-F2) : ETA de la prochaine marche, sous la courbe ---- */
+  _fmtSem(x){
+    if(x == null) return '?';
+    return x < 1.5 ? `${Math.max(1, Math.round(x * 7))} j` : `${Math.round(x)} sem`;
+  }
+  renderProjection(nom){
+    const el = $('prog-projection'); if(!el) return;
+    el.className = 'charge-detail mono';
+    const p = projeterExercice(this.etat.seances, nom);
+    if(!p.fiable || p.pente == null){
+      el.textContent = p.nbPoints >= 2
+        ? 'Projection : tendance trop irrégulière pour une estimation fiable — continue à enregistrer.'
+        : 'Projection : pas encore assez de séances chiffrées sur cet exercice.';
+      return;
+    }
+    if(p.pente <= 0){
+      el.textContent = `Projection : 1RM estimé stable/en baisse (${p.pente >= 0 ? '+' : ''}${p.pente.toFixed(2)} kg/sem). Vise un palier ou change de stimulus.`;
+      return;
+    }
+    const fmtEta = gain => {
+      const e = etaObjectif(p, gain);
+      if(e.semaines == null) return null;
+      let band = '';
+      if(e.max == null) band = ` (≥ ${this._fmtSem(e.min)})`;
+      else if(e.max - e.min >= 0.5) band = ` (${this._fmtSem(e.min)}–${this._fmtSem(e.max)})`;
+      return `+${gain} kg ≈ ${this._fmtSem(e.semaines)}${band}`;
+    };
+    const a = fmtEta(2.5), b = fmtEta(5);
+    el.innerHTML = `Projection : <b>+${p.pente.toFixed(2)} kg/sem</b> de 1RM estimé (r²&nbsp;${p.r2.toFixed(2)})`
+      + `${a ? ` · prochaine marche ${a}` : ''}${b ? ` · ${b}` : ''}.`;
   }
 
   /* ---- éditeur de programmes / exercices ---- */
