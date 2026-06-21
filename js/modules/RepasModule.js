@@ -2,12 +2,16 @@ import { $, echap, cloneProfond, aujourdHui, slug } from '../utils.js';
 import { ALIMENTS, PLAN } from '../data.js';
 import { ORDRE_CATEGORIES } from '../data/aliments-base.js';
 import { catalogue, rechercher, categoriesPresentes } from '../catalogue.js';
-import { kcalItem, protItem, glucItem, lipItem, fibItem, facteurFlex, flexSature, protCible, macrosCible, macrosPlat } from '../nutrition.js';
+import { kcalItem, protItem, glucItem, lipItem, fibItem, flexSature, macrosCible, macrosPlat } from '../nutrition.js';
 import { moyennesHebdo } from '../stats.js';
 import { calculerBesoins, frequenceHebdo, OBJECTIFS } from '../besoins.js';
 import { genererMenu, ajusterMenu } from '../generateur.js';
 import { POOL_GENERATEUR } from '../data/generateur-pool.js';
 import { repasActifs, menuActif } from '../plans.js';
+import { qteAjustee as qteAjusteePure, macrosRepas as macrosRepasPure,
+  entreesDuJour, extras as extrasHorsPlan, consomme as consommeJournal,
+  entreeJournalRepas, deplacerAliment as deplacerAlimentPure,
+  suggestionsProteine as suggestionsProteinePure, supprimerMenu as supprimerMenuPure } from '../repas-logique.js';
 import { toast, demander, confirmer } from '../ui.js';
 
 /* ================= REPAS : cible du jour, écart temps réel, log de la réalité =================
@@ -83,9 +87,10 @@ export class RepasModule {
   async supprimerMenu(){
     if(this.etat.plansAlim.length<=1){ toast('Garde au moins un menu.', 'erreur'); return; }
     if(!(await confirmer('Supprimer ce menu entier ?', {danger:true}))) return;
-    const id = this.etat.planAlimActif;
-    this.etat.plansAlim = this.etat.plansAlim.filter(p=>p.id!==id);
-    this.etat.planAlimActif = this.etat.plansAlim[0].id;
+    const res = supprimerMenuPure(this.etat.plansAlim, this.etat.planAlimActif);
+    if(!res) return;
+    this.etat.plansAlim = res.plansAlim;
+    this.etat.planAlimActif = res.planAlimActif;
     this.etat.repas.planJour = null;
     this.store.sauver();
     this.render();
@@ -208,17 +213,11 @@ export class RepasModule {
     });
   }
 
-  /* ---- calculs nutritionnels (moteur pur dans nutrition.js) ---- */
-  qteAjustee(cle, qBase){
-    if(!ALIMENTS[cle].flex) return qBase;
-    const q = qBase * facteurFlex(this.etat.objectifKcal, this.planActif());
-    return Math.round(q/5)*5; /* arrondi à 5 g */
-  }
-  repasKcal(r){ return r.items.reduce((s,[cle,q])=>s+kcalItem(cle, this.qteAjustee(cle,q)),0); }
-  repasProt(r){ return r.items.reduce((s,[cle,q])=>s+protItem(cle, this.qteAjustee(cle,q)),0); }
-  repasGluc(r){ return r.items.reduce((s,[cle,q])=>s+glucItem(cle, this.qteAjustee(cle,q)),0); }
-  repasLip(r){  return r.items.reduce((s,[cle,q])=>s+lipItem(cle,  this.qteAjustee(cle,q)),0); }
-  repasFib(r){  return r.items.reduce((s,[cle,q])=>s+fibItem(cle,  this.qteAjustee(cle,q)),0); }
+  /* ---- calculs nutritionnels (moteur pur dans repas-logique.js / nutrition.js) ----
+     Le facteur flex se calcule sur le menu actif (planActif), pas sur la surcharge du jour. */
+  qteAjustee(cle, qBase){ return qteAjusteePure(cle, qBase, this.etat.objectifKcal, this.planActif()); }
+  macrosRepas(r){ return macrosRepasPure(r, this.etat.objectifKcal, this.planActif()); }
+  repasKcal(r){ return this.macrosRepas(r).kcal; }
 
   /* cible du jour : kcal = objectif réglé ; macros = ce que le plan délivre (flex ajusté) */
   cibles(){
@@ -227,15 +226,9 @@ export class RepasModule {
   }
 
   /* ---- journal du jour (= réalité) ---- */
-  journalDuJour(){ const j=this.etat.repas.jour; return this.etat.journalRepas.filter(e=>e.date===j); }
-  extrasDuJour(){ return this.journalDuJour().filter(e=>e.horsPlan); }
-  consomme(){
-    /* anciennes entrées sans gluc/lip/fib (legacy V3.1−) → comptées 0, jamais NaN */
-    return this.journalDuJour().reduce((s,e)=>({
-      kcal:s.kcal+(e.kcal||0), prot:s.prot+(e.prot||0),
-      gluc:s.gluc+(e.gluc||0), lip:s.lip+(e.lip||0), fib:s.fib+(e.fib||0),
-    }), {kcal:0,prot:0,gluc:0,lip:0,fib:0});
-  }
+  journalDuJour(){ return entreesDuJour(this.etat.journalRepas, this.etat.repas.jour); }
+  extrasDuJour(){ return extrasHorsPlan(this.journalDuJour()); }
+  consomme(){ return consommeJournal(this.journalDuJour()); }
 
   /* ---- cochage : un tap prend le repas (ne décoche jamais) ; bouton Annuler explicite ---- */
   prendreRepas(id){
@@ -253,14 +246,8 @@ export class RepasModule {
     const r = this.plan().find(x=>x.id===id); if(!r) return;
     const jour = this.etat.repas.jour;
     this.etat.journalRepas = this.etat.journalRepas.filter(e=>!(e.date===jour && e.id===id));
-    const items = r.items.map(([cle,qBase])=>{
-      const a = ALIMENTS[cle]; const q = this.qteAjustee(cle,qBase);
-      return { cle, nom:a.nom, qte:q, unite: a.unite!==undefined ? (a.unite||'unité') : 'g' };
-    });
-    this.etat.journalRepas.push({ date:jour, id, nom:r.nom,
-      kcal:Math.round(this.repasKcal(r)), prot:Math.round(this.repasProt(r)),
-      gluc:Math.round(this.repasGluc(r)), lip:Math.round(this.repasLip(r)), fib:Math.round(this.repasFib(r)),
-      objectifKcal:this.etat.objectifKcal, items });
+    /* flex calculé sur le menu actif (planActif), même si le repas vient de la surcharge du jour */
+    this.etat.journalRepas.push(entreeJournalRepas(r, jour, this.etat.objectifKcal, this.planActif()));
   }
   deJournaliserRepas(id){
     const jour = this.etat.repas.jour;
@@ -310,21 +297,8 @@ export class RepasModule {
     $('extra-aliment').value=''; this.majModeExtra();
   }
 
-  /* suggestions pour combler le déficit protéique restant (data déjà dans ALIMENTS) */
-  suggestionsProteine(resteProt){
-    return ['whey','skyr','poulet'].map(cle=>{
-      const a = ALIMENTS[cle];
-      let qte, prot, kcal, unite;
-      if(a.unite!==undefined){
-        qte = Math.max(1, Math.round(resteProt / a.protU));
-        unite = a.unite||'unité'; prot = a.protU*qte; kcal = a.kcalU*qte;
-      } else {
-        qte = Math.max(20, Math.round((resteProt / a.prot100 * 100)/10)*10);   /* arrondi 10 g */
-        unite = 'g'; prot = a.prot100*qte/100; kcal = a.kcal100*qte/100;
-      }
-      return { cle, nom:a.nom, qte, unite, prot:Math.round(prot), kcal:Math.round(kcal) };
-    });
-  }
+  /* suggestions pour combler le déficit protéique restant (moteur pur repas-logique.js) */
+  suggestionsProteine(resteProt){ return suggestionsProteinePure(resteProt); }
 
   /* ---- formulaire hors-plan ---- */
   basculerFormExtra(){
@@ -1083,13 +1057,7 @@ export class RepasModule {
      - 'plan' : agit sur les repas du menu actif (et reporte le déplacement sur planJour si
                 actif, pour que la vue du jour reste cohérente). Repérage par `cle` → robuste. */
   deplacerAliment(fromId, cle, toId){
-    const appliquer = repas => {
-      const from = repas.find(r=>r.id===fromId), to = repas.find(r=>r.id===toId);
-      if(!from || !to) return;
-      const i = from.items.findIndex(([c])=>c===cle);
-      if(i<0 || to.items.some(([c])=>c===cle)) return;
-      to.items.push(from.items.splice(i,1)[0]);
-    };
+    const appliquer = repas => deplacerAlimentPure(repas, fromId, cle, toId);
     if(this.porteeDepl==='jour'){
       if(!this.etat.repas.planJour) this.etat.repas.planJour = cloneProfond(this.planActif());
       appliquer(this.etat.repas.planJour);
