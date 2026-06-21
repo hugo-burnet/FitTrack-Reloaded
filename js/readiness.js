@@ -20,9 +20,10 @@
    Pur et sans DOM (testable comme stats/xp/charge/scores). */
 
 import { jourLocal, aujourdHui } from './utils.js';
-import { pilotageCharge, ACWR_BAS, ACWR_HAUT, ACWR_RISQUE } from './charge.js';
+import { pilotageCharge, chargesHebdo, semainesMontantes, ACWR_BAS, ACWR_HAUT, ACWR_RISQUE } from './charge.js';
 import { bilanForce } from './bilan.js';
 import { meilleurE1rm } from './progression.js';
+import { detecterDeload } from './scores.js';
 import { xpSeance } from './xp.js';
 
 const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
@@ -182,6 +183,28 @@ export function scoreProgression(seances, refISO = aujourdHui(), fenetreJours = 
   return { score, niveau, confiance, total: bf.total, hausse: bf.hausse, declin: bf.declin, prs, nbSeances };
 }
 
+/* ================= RECO DE CHARGE CONTEXTUALISÉE (D.4) =================
+   Tempère la recommandation de progression (progression.recommander) selon le feu
+   readiness du jour : on ne suggère JAMAIS de monter la charge un jour « rouge », et on
+   invite à la prudence un jour « orange ». Pur : prend la reco + le feu, renvoie une reco
+   enrichie (`noteReadiness`, `tempere`) sans perdre l'info d'origine (cible, message). */
+export function recoContextuelle(reco, feu){
+  if(!reco) return reco;
+  const base = { ...reco, tempere: false, noteReadiness: null };
+  if(feu === 'rouge'){
+    if(reco.statut === 'monter')
+      return { ...base, tempere: true, ton: 'neutre',
+        noteReadiness: 'Jour rouge (forme basse) : ne monte pas la charge aujourd\'hui. Refais la même charge proprement (ou technique/récup) — tu prendras le palier un jour vert.' };
+    return { ...base, noteReadiness: 'Jour rouge : garde de la réserve, privilégie la qualité d\'exécution.' };
+  }
+  if(feu === 'orange' && reco.statut === 'monter')
+    return { ...base, tempere: true,
+      noteReadiness: 'Jour orange : si tu montes, garde 1-2 reps en réserve et valide la technique avant de confirmer le palier.' };
+  if(feu === 'vert' && reco.statut === 'monter')
+    return { ...base, noteReadiness: 'Jour vert : c\'est le bon moment pour tenter le palier.' };
+  return base;
+}
+
 /* ================= ORCHESTRATEURS (lisent l'état, restent purs) =================
    Extraient les entrées des collections d'état et appellent les scorers. Le DOM appelle ceux-ci. */
 
@@ -211,6 +234,23 @@ export function readinessDuJour(etat, refISO = aujourdHui()){
     forme: ff.forme, fitness: ff.fitness,
     acwr: p.acwr,
     delaiSollicitation: delaiDerniereSeance(seances, refISO),
+  });
+}
+
+/* deload du jour : assemble les signaux (charge montante, forme/ACWR, progression) et
+   délègue au détecteur pur. `progression` = sortie de scoreProgression (réutilisée par l'UI
+   pour ne pas recalculer). Renvoie {actif, ...} façon alerte. */
+export function deloadDuJour(etat, refISO = aujourdHui(), progression = null){
+  const seances = etat && etat.seances;
+  const ff = fitnessFatigue(seances, refISO);
+  const p = pilotageCharge(seances, refISO);
+  const hebdo = chargesHebdo(seances, refISO, 4);
+  const prog = progression || scoreProgression(seances, refISO);
+  return detecterDeload({
+    semainesMontantes: semainesMontantes(hebdo),
+    forme: ff.forme, fitness: ff.fitness, acwr: p.acwr,
+    niveauProgression: prog && prog.niveau,
+    chargeHebdoActuelle: hebdo.length ? hebdo[hebdo.length - 1].charge : null,
   });
 }
 

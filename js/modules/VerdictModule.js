@@ -5,7 +5,8 @@ import { protCible } from '../nutrition.js';
 import { adherenceHebdo, bilanForce } from '../bilan.js';
 import { pilotageCharge, serieCharge } from '../charge.js';
 import { scoreRisk, scoreCompliance, alerteSurcharge, alerteSousCharge, alerteStagnation } from '../scores.js';
-import { readinessDuJour, recoveryDuJour, scoreProgression, etatJourPour } from '../readiness.js';
+import { readinessDuJour, recoveryDuJour, scoreProgression, etatJourPour, deloadDuJour } from '../readiness.js';
+import { volumeParGroupe } from '../volume.js';
 import { optCommun } from '../charts.js';
 
 /* ================= VERDICT : l'arbre de décision (rendu) ================= */
@@ -52,6 +53,34 @@ export class VerdictModule {
     this.renderSemaine(rythme);
     this.renderReadiness();
     this.renderCharge();
+    this.renderDeload();
+    this.renderVolume();
+  }
+
+  /* ---- deload détecté (V4-F2) : semaine d'allègement quand charge↑ + fatigue + plateau ---- */
+  renderDeload(){
+    const box = $('deload-alerte'); if(!box) return;
+    const d = deloadDuJour(this.etat);
+    if(d.actif){
+      box.className = 'verdict ' + d.cls;
+      $('deload-alerte-t').textContent = d.titre;
+      $('deload-alerte-e').textContent = d.e;
+    } else box.className = 'verdict cache';
+  }
+
+  /* ---- volume par groupe musculaire (V4-F2) : séries/sem vs repères 10-20 ---- */
+  renderVolume(){
+    const el = $('volume-liste'); if(!el) return;
+    const v = volumeParGroupe(this.etat.seances, aujourdHui(), 7);
+    if(!v.total){ el.innerHTML = '<p class="note" style="margin:0">Aucune séance ces 7 derniers jours — entraîne-toi pour activer le suivi du volume.</p>'; return; }
+    const cls = { sous: 'info', ok: 'ok', sur: 'alerte' };
+    const grille = v.parGroupe.map(g =>
+      `<div class="vol-ligne"><span class="vol-nom">${echap(g.groupe)}</span>`
+      + `<span class="vol-val mono ${cls[g.etat] || ''}">${g.series} série${g.series > 1 ? 's' : ''}</span></div>`).join('');
+    const conseils = v.ajustements.length
+      ? '<ul class="vol-conseils">' + v.ajustements.map(a => `<li class="${cls[a.etat] || ''}">${echap(a.message)}</li>`).join('') + '</ul>'
+      : '<p class="note" style="margin:8px 0 0;color:var(--ok)">✓ Volumes dans les repères sur les groupes principaux entraînés.</p>';
+    el.innerHTML = `<div class="vol-grille">${grille}</div>${conseils}`;
   }
 
   /* ---- récup & readiness (V4-F1) : saisie du jour + scores Readiness/Recovery/Progression + stagnation ---- */

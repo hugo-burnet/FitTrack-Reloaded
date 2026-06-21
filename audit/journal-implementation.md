@@ -179,3 +179,43 @@ qui la fige → rebrancher le module → `npm test` vert.
   rendues, cible `0 / 2545 kcal`) et Muscu (formulaire de séance rendu sur sélection d'un jour),
   **zéro erreur console**.
 - Zéro dépendance, JS vanilla, offline-first conservés.
+
+---
+
+## V4 — F2 « Recommandations & projection » (branche `v4-f2-recommandations`) ✅ FAIT
+Cf. `phase-4-surcharge-progressive.md` §D.4 + §E.1. Livré en 5 sous-lots committables, moteurs
+purs testés d'abord, UI branchée en fin de lot. Synchro et `fusion.js` non touchés.
+
+### F2.1 — Projection de progression (P1 · §E.1) `js/projection.js`
+- [x] `serieE1rm` (points date→meilleur e1RM, 1/jour) ; `regressionLineaire` (pente, ordonnée,
+  r², **erreur-type de la pente** = variabilité §B.6) ; `projeterExercice` (pente kg/sem +
+  fiabilité ≥4 pts & r²≥0,3, sur fenêtre récente) ; `etaObjectif` (ETA d'un gain +X kg + **bande
+  d'incertitude** ±erreur-type, borne ouverte si pente plate). **+13 tests.**
+
+### F2.2 — Deload auto/détecté (P1 · §D.4) `scores.js` + `charge.js` + `readiness.js`
+- [x] `charge.js` : `chargesHebdo` (4 blocs de 7 j) + `semainesMontantes`. `scores.js` :
+  `detecterDeload` (3 signaux ET : charge hebdo montante + fatigue installée (TSB<0 ou ACWR hors
+  zone) + progression qui plafonne → semaine d'allègement ~55 % volume). `readiness.js` :
+  `deloadDuJour` (orchestrateur). **+11 tests.**
+
+### F2.3 — Reco de charge contextualisée (P1 · §D.4) `readiness.js`
+- [x] `recoContextuelle(reco, feu)` : tempère `recommander()` selon le feu readiness — jamais de
+  +charge un jour **rouge** (ton neutralisé + note), prudence **orange**, encouragement **vert** ;
+  info d'origine conservée. **+5 tests.**
+
+### F2.4 — Ajustement de volume par groupe (P2 · §D.4) `js/volume.js`
+- [x] `groupeExercice` (classifieur nom→groupe heuristique ordonné, repli 'Autre' — **tout le
+  programme par défaut classé**, testé) ; `volumeParGroupe` (séries de travail/sem par groupe vs
+  repères 10-20, ajustements sur les groupes principaux entraînés hors zone). Aucun changement de
+  schéma. **+9 tests.**
+
+### F2.5 — UI + vérifs finales
+- [x] **Verdict** : alerte deload (`#deload-alerte`) + carte « Volume par groupe musculaire »
+  (`#carte-volume`). **Muscu** : projection sous la courbe (`#prog-projection`, ETA +2,5/+5 kg)
+  + reco contextualisée (note `.obj-readiness` dans la carte Objectif). CSS dédié (vol-*, obj-readiness).
+- [x] **278 → 316 tests verts** (+38). Graphe d'imports OK (40 modules, Node). HTTP 200.
+  **`sw.js` v33 → v34** (+ `projection.js`, `volume.js` précachés).
+- [x] **Vérif navigateur** (Chromium CDP, **cache désactivé**) : état vide → cartes en dégradé
+  gracieux, zéro erreur. Données semées (12 séances) → projection « +2,67 kg/sem · r² 1,00 ·
+  prochaine marche +2,5 kg ≈ 7 j · +5 kg ≈ 2 sem », volume par groupe + conseils. Zéro erreur console.
+- ⏳ Reste **F3** : analyse de cycles, corrélations.

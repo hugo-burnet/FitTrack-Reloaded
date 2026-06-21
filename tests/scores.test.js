@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { scoreCompliance, scoreRisk, alerteSurcharge, alerteSousCharge, alerteStagnation } from '../js/scores.js';
+import { scoreCompliance, scoreRisk, alerteSurcharge, alerteSousCharge, alerteStagnation, detecterDeload } from '../js/scores.js';
 
 test('scoreCompliance : tout à la cible → 100, confiance fiable', () => {
   const r = scoreCompliance({ seancesRealisees: 5, seancesPlanifiees: 5, joursProt: 7, joursKcal: 7 });
@@ -73,4 +73,34 @@ test('alerteStagnation : stagne + bonne adhérence + 0 PR → déclenche ; sinon
   assert.equal(alerteStagnation({ niveauProgression: 'progresse', prs: 2, bonneAdherence: true }).actif, false);
   assert.equal(alerteStagnation({ niveauProgression: 'stagne', prs: 3, bonneAdherence: true }).actif, false);    /* des PR récents → pas une vraie stagnation */
   assert.equal(alerteStagnation({}).actif, false);
+});
+
+/* ---- detecterDeload (D.4) ---- */
+test('detecterDeload : 3 signaux réunis → actif, cible ≈ 55 % du volume', () => {
+  const r = detecterDeload({ semainesMontantes: 3, forme: -20, fitness: 100, acwr: 1.1,
+    niveauProgression: 'stagne', chargeHebdoActuelle: 10000 });
+  assert.equal(r.actif, true);
+  assert.equal(r.cible, 5500);
+  assert.equal(r.cls, 'v-baisse');
+});
+test('detecterDeload : ACWR haut suffit comme fatigue (sans TSB)', () => {
+  const r = detecterDeload({ semainesMontantes: 2, acwr: 1.4, niveauProgression: 'régresse', chargeHebdoActuelle: 8000 });
+  assert.equal(r.actif, true);
+});
+test('detecterDeload : progression qui progresse → inactif (pas de deload)', () => {
+  const r = detecterDeload({ semainesMontantes: 3, forme: -20, fitness: 100, niveauProgression: 'progresse', chargeHebdoActuelle: 9000 });
+  assert.equal(r.actif, false);
+});
+test('detecterDeload : charge pas assez montante → inactif', () => {
+  const r = detecterDeload({ semainesMontantes: 1, forme: -30, fitness: 100, niveauProgression: 'stagne' });
+  assert.equal(r.actif, false);
+});
+test('detecterDeload : fraîcheur (forme positive, ACWR ok) → inactif', () => {
+  const r = detecterDeload({ semainesMontantes: 3, forme: 10, fitness: 100, acwr: 1.0, niveauProgression: 'stagne' });
+  assert.equal(r.actif, false);
+});
+test('detecterDeload : cible null si volume courant inconnu', () => {
+  const r = detecterDeload({ semainesMontantes: 2, acwr: 1.4, niveauProgression: 'stagne' });
+  assert.equal(r.actif, true);
+  assert.equal(r.cible, null);
 });
