@@ -93,17 +93,19 @@ export function fusionnerEtat(etat, imp){
     Object.assign(etat.aliments.perso, imp.aliments.perso);
   }
 
-  /* goûts alimentaires (générateur de menus) : union des aimés/évités entre appareils
-     (un goût ajouté ici se propage), l'évité gagne sur l'aimé ; faciliteSeulement à l'entrant.
-     `imp` est déjà assaini (assainirEtat ci-dessus). Extension validée le 2026-06-21. */
+  /* goûts alimentaires (générateur de menus) : union des aimés/évités/régimes entre appareils
+     (un goût ou régime ajouté ici se propage), l'évité gagne sur l'aimé ; faciliteSeulement à
+     l'entrant. `imp` est déjà assaini (assainirEtat ci-dessus). Extension validée le 2026-06-21,
+     régimes ajoutés à l'union le 2026-06-21 (même semantique). */
   if(imp.preferencesAlim && typeof imp.preferencesAlim === 'object'){
     const loc = (etat.preferencesAlim && typeof etat.preferencesAlim === 'object')
-      ? etat.preferencesAlim : { aimes:[], evites:[], faciliteSeulement:true };
+      ? etat.preferencesAlim : { aimes:[], evites:[], faciliteSeulement:true, regimes:[] };
     const union = (a, b) => [...new Set([...(a||[]), ...(b||[])])];
     const evites = union(loc.evites, imp.preferencesAlim.evites);
     const aimes = union(loc.aimes, imp.preferencesAlim.aimes).filter(c => !evites.includes(c));
     etat.preferencesAlim = {
       aimes, evites,
+      regimes: union(loc.regimes, imp.preferencesAlim.regimes),
       faciliteSeulement: typeof imp.preferencesAlim.faciliteSeulement === 'boolean'
         ? imp.preferencesAlim.faciliteSeulement : loc.faciliteSeulement,
     };

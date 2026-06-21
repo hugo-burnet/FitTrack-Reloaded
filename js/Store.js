@@ -88,6 +88,7 @@ export class Store extends EventTarget {
     if(!Array.isArray(etat.preferencesAlim.aimes)) etat.preferencesAlim.aimes = [];
     if(!Array.isArray(etat.preferencesAlim.evites)) etat.preferencesAlim.evites = [];
     if(typeof etat.preferencesAlim.faciliteSeulement !== 'boolean') etat.preferencesAlim.faciliteSeulement = true;
+    if(!Array.isArray(etat.preferencesAlim.regimes)) etat.preferencesAlim.regimes = [];
     if(typeof etat.objectifKcal !== 'number') etat.objectifKcal = def.objectifKcal;
     if(!etat.repas || typeof etat.repas !== 'object') etat.repas = def.repas;
     if(!etat.repas.coches) etat.repas.coches = {};
