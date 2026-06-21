@@ -75,10 +75,29 @@ export function alerteSurcharge({ acwr = null, monotonie = null, risk = null }){
   return { actif: false };
 }
 
-/* ---- Alerte de sous-charge (D.3) : marge pour pousser ---- */
-export function alerteSousCharge({ acwr = null }){
-  if(acwr != null && acwr < ACWR_BAS && acwr > 0)
+/* ---- Alerte de sous-charge (D.3) : marge pour pousser ----
+   `recovery` (score 0-100, optionnel) enrichit le message : ACWR bas + bonne récup = feu vert
+   franc pour ajouter du volume ; récup basse = on reste prudent malgré la marge de charge. */
+export function alerteSousCharge({ acwr = null, recovery = null }){
+  if(acwr != null && acwr < ACWR_BAS && acwr > 0){
+    if(recovery != null && recovery >= 60)
+      return { actif: true, cls: 'v-hausse', titre: 'Feu vert pour pousser',
+        e: `Charge récente sous ta condition (ACWR ${acwr.toFixed(2)} < ${ACWR_BAS}) ET récupération bonne (${recovery}/100) : c'est le moment d'ajouter du volume (séries ou charge) sans risque.` };
+    if(recovery != null && recovery < 45)
+      return { actif: true, cls: 'v-hausse', titre: 'Marge de charge, mais récup basse',
+        e: `Ta charge est sous ta condition (ACWR ${acwr.toFixed(2)} < ${ACWR_BAS}), mais ta récupération est basse (${recovery}/100) : récupère d'abord, tu pousseras le volume ensuite.` };
     return { actif: true, cls: 'v-hausse', titre: 'Marge pour pousser',
       e: `Ta charge récente est sous ta condition installée (ACWR ${acwr.toFixed(2)} < ${ACWR_BAS}). Si la récupération est bonne, tu peux ajouter du volume sans risque.` };
+  }
+  return { actif: false };
+}
+
+/* ---- Alerte de stagnation (D.2) : ni déclin ni progrès, malgré une bonne adhérence ----
+   Comble l'angle mort « force plate ». Gate sur l'adhérence : sans assiduité, la reco serait
+   « sois régulier d'abord », pas « varie le stimulus ». Entrées issues de scoreProgression. */
+export function alerteStagnation({ niveauProgression = null, prs = null, bonneAdherence = false }){
+  if(bonneAdherence && niveauProgression === 'stagne' && (prs == null || prs === 0))
+    return { actif: true, cls: 'v-neutre', titre: 'Stagnation — change de stimulus',
+      e: `Ta force plafonne malgré une bonne assiduité (aucun nouveau record récent). Varie le stimulus : tempo, technique, nouvel exercice, ou une semaine d'allègement pour relancer la progression.` };
   return { actif: false };
 }
