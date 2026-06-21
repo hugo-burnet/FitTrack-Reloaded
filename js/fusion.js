@@ -92,5 +92,21 @@ export function fusionnerEtat(etat, imp){
     if(!etat.aliments.perso || typeof etat.aliments.perso !== 'object') etat.aliments.perso = {};
     Object.assign(etat.aliments.perso, imp.aliments.perso);
   }
+
+  /* goûts alimentaires (générateur de menus) : union des aimés/évités entre appareils
+     (un goût ajouté ici se propage), l'évité gagne sur l'aimé ; faciliteSeulement à l'entrant.
+     `imp` est déjà assaini (assainirEtat ci-dessus). Extension validée le 2026-06-21. */
+  if(imp.preferencesAlim && typeof imp.preferencesAlim === 'object'){
+    const loc = (etat.preferencesAlim && typeof etat.preferencesAlim === 'object')
+      ? etat.preferencesAlim : { aimes:[], evites:[], faciliteSeulement:true };
+    const union = (a, b) => [...new Set([...(a||[]), ...(b||[])])];
+    const evites = union(loc.evites, imp.preferencesAlim.evites);
+    const aimes = union(loc.aimes, imp.preferencesAlim.aimes).filter(c => !evites.includes(c));
+    etat.preferencesAlim = {
+      aimes, evites,
+      faciliteSeulement: typeof imp.preferencesAlim.faciliteSeulement === 'boolean'
+        ? imp.preferencesAlim.faciliteSeulement : loc.faciliteSeulement,
+    };
+  }
   return etat;
 }

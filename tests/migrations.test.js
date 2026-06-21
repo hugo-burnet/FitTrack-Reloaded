@@ -107,10 +107,25 @@ test('migration v5 → v6 : ne dé-référence pas un etatsJour[] déjà présen
   assert.equal(e.etatsJour, etatsJour);   /* même référence : pas écrasé */
 });
 
-test('migration v1 (legacy) → schéma courant : profil + perso + plansAlim + plats + etatsJour en une chaîne', () => {
+test('migration v6 → v7 : ajoute les préférences alimentaires par défaut', () => {
+  const e = { schema:6, etatsJour:[] };
+  migrer(e);
+  assert.equal(e.schema, SCHEMA_ACTUEL);
+  assert.deepEqual(e.preferencesAlim, { aimes:[], evites:[], faciliteSeulement:true });
+});
+
+test('migration v6 → v7 : ne dé-référence pas des préférences déjà présentes', () => {
+  const preferencesAlim = { aimes:['poulet-blanc'], evites:['oeuf'], faciliteSeulement:false };
+  const e = { schema:6, preferencesAlim };
+  migrer(e);
+  assert.equal(e.preferencesAlim, preferencesAlim);   /* même référence : pas écrasé */
+});
+
+test('migration v1 (legacy) → schéma courant : profil + perso + plansAlim + plats + etatsJour + prefs en une chaîne', () => {
   const e = { poids:[], plan:[{id:'dej', items:[['riz',100]]}] };
   migrer(e);
   assert.equal(e.schema, SCHEMA_ACTUEL);
   assert.ok(e.profil && e.aliments && Array.isArray(e.plansAlim) && Array.isArray(e.plats) && Array.isArray(e.etatsJour));
+  assert.ok(e.preferencesAlim && Array.isArray(e.preferencesAlim.aimes));
   assert.equal(e.planAlimActif, 'principal');
 });

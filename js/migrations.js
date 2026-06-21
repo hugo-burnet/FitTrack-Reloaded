@@ -12,7 +12,7 @@
    l'app. Les évolutions v3+ (profil, macros complètes, multi-menus, charge de
    séance…) s'ajouteront ici, chacune testée isolément. */
 
-export const SCHEMA_ACTUEL = 6;
+export const SCHEMA_ACTUEL = 7;
 
 export const MIGRATIONS = [
   /* v1 → v2 : profil utilisateur + objectif explicite (E5). Le calculateur de
@@ -51,6 +51,12 @@ export const MIGRATIONS = [
      migration (dégradé gracieux : leur absence n'empêche aucun calcul). */
   { de:5, vers:6, appliquer(etat){
       if(!Array.isArray(etat.etatsJour)) etat.etatsJour = [];
+  } },
+  /* v6 → v7 : générateur de menus adaptés. Goûts alimentaires (aimés/évités + plats faciles
+     uniquement) qui pilotent genererMenu. Collection vide par défaut (générateur indicatif). */
+  { de:6, vers:7, appliquer(etat){
+      if(!etat.preferencesAlim || typeof etat.preferencesAlim !== 'object')
+        etat.preferencesAlim = { aimes:[], evites:[], faciliteSeulement:true };
   } },
 ];
 

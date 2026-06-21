@@ -83,6 +83,11 @@ export class Store extends EventTarget {
     if(!Array.isArray(etat.plats)) etat.plats = def.plats;
     /* état du jour (V4-F1) : récup quotidienne ; jamais absent pour que la saisie écrive sereinement */
     if(!Array.isArray(etat.etatsJour)) etat.etatsJour = def.etatsJour;
+    /* goûts alimentaires (générateur de menus) : jamais absent pour que la saisie écrive sereinement */
+    if(!etat.preferencesAlim || typeof etat.preferencesAlim !== 'object') etat.preferencesAlim = def.preferencesAlim;
+    if(!Array.isArray(etat.preferencesAlim.aimes)) etat.preferencesAlim.aimes = [];
+    if(!Array.isArray(etat.preferencesAlim.evites)) etat.preferencesAlim.evites = [];
+    if(typeof etat.preferencesAlim.faciliteSeulement !== 'boolean') etat.preferencesAlim.faciliteSeulement = true;
     if(typeof etat.objectifKcal !== 'number') etat.objectifKcal = def.objectifKcal;
     if(!etat.repas || typeof etat.repas !== 'object') etat.repas = def.repas;
     if(!etat.repas.coches) etat.repas.coches = {};

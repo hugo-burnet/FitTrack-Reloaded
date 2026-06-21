@@ -24,6 +24,22 @@ test('fusion : état du jour réconcilié par date, l\'entrant gagne sur collisi
                    [['2026-06-19',7,2],['2026-06-20',8,1],['2026-06-21',7.5,0]]);
 });
 
+test('fusion : goûts alimentaires fusionnés (union, évité gagne, facilité à l\'entrant)', () => {
+  const etat = etatParDefaut();
+  etat.preferencesAlim = { aimes:['poulet-blanc','riz'], evites:['oeuf'], faciliteSeulement:true };
+  fusionnerEtat(etat, { preferencesAlim:{ aimes:['skyr','riz'], evites:['saumon'], faciliteSeulement:false } });
+  assert.deepEqual(etat.preferencesAlim.aimes.sort(), ['poulet-blanc','riz','skyr']);   /* union */
+  assert.deepEqual(etat.preferencesAlim.evites.sort(), ['oeuf','saumon']);               /* union */
+  assert.equal(etat.preferencesAlim.faciliteSeulement, false);                           /* entrant gagne */
+
+  /* un aliment évité par l'entrant l'emporte sur un aimé local */
+  const e2 = etatParDefaut();
+  e2.preferencesAlim = { aimes:['skyr'], evites:[], faciliteSeulement:true };
+  fusionnerEtat(e2, { preferencesAlim:{ aimes:[], evites:['skyr'], faciliteSeulement:true } });
+  assert.deepEqual(e2.preferencesAlim.aimes, []);
+  assert.deepEqual(e2.preferencesAlim.evites, ['skyr']);
+});
+
 test('fusion : séances par date+jourId (remplace l\'existant, ajoute les nouvelles)', () => {
   const etat = etatParDefaut();
   etat.seances = [{date:'2026-01-01', jourId:'push', exercices:[{nom:'A',series:[{charge:1,reps:1}]}]}];
