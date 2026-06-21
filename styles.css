@@ -339,6 +339,8 @@ select{-webkit-appearance:none;appearance:none}
 .gen-chip.aime{border-color:var(--ok);color:var(--ok);background:rgba(76,183,132,.12)}
 .gen-chip.evite{border-color:var(--alerte);color:var(--alerte);background:rgba(224,122,99,.12);text-decoration:line-through}
 .gen-chip:focus-visible{outline:2px solid var(--laiton);outline-offset:1px}
+.gen-actions{display:flex;gap:8px;flex-wrap:wrap}
+.gen-actions .btn{flex:1 1 180px;margin-top:0}
 .gen-res-tete{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--craie-3);margin:14px 0 4px}
 .gen-res-macros{font-size:13px;color:var(--craie);font-variant-numeric:tabular-nums}
 

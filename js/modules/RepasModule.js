@@ -5,7 +5,7 @@ import { catalogue, rechercher, categoriesPresentes } from '../catalogue.js';
 import { kcalItem, protItem, glucItem, lipItem, fibItem, facteurFlex, flexSature, protCible, macrosCible, macrosPlat } from '../nutrition.js';
 import { moyennesHebdo } from '../stats.js';
 import { calculerBesoins, frequenceHebdo, OBJECTIFS } from '../besoins.js';
-import { genererMenu } from '../generateur.js';
+import { genererMenu, ajusterMenu } from '../generateur.js';
 import { POOL_GENERATEUR } from '../data/generateur-pool.js';
 import { repasActifs, menuActif } from '../plans.js';
 import { toast, demander, confirmer } from '../ui.js';
@@ -167,6 +167,7 @@ export class RepasModule {
       const genChip = e.target.closest('#gen-prefs [data-gen-cle]');
       if(genChip){ this.cyclerPrefGen(genChip.dataset.genCle); return; }
       if(e.target.closest('#btn-gen-lancer')){ this.genererMenuAuto(); return; }
+      if(e.target.closest('#btn-gen-ajuster')){ this.ajusterMenuActuel(); return; }
       const carte = e.target.closest('[data-action="prendre-repas"]');
       if(carte){ this.prendreRepas(carte.dataset.id); return; }
     });
@@ -757,11 +758,30 @@ export class RepasModule {
     const nom = `${this.OBJ_LIB[this.objectifCourant()]} auto`;
     const id = 'm' + Date.now();
     this.etat.plansAlim.push({ id, nom, repas: res.repas.map(r => ({ id:r.id, nom:r.nom, items:r.items.map(([cle, q]) => [cle, q]) })) });
-    this.dernierMenuGen = res;
+    this.dernierMenuGen = { ...res, _action: 'cree' };
     this.etat.planAlimActif = id;
     this.etat.repas.planJour = null;
     this.store.sauver();
     toast(`Menu « ${nom} » créé et activé.`, 'ok');
+    this.render();
+  }
+
+  /* corrige le menu ACTIF en place : rééchelonne les portions de ses aliments vers la cible */
+  ajusterMenuActuel(){
+    const c = this.cibleGen();
+    if(!c.valide){
+      const lib = { sexe:'le sexe', age:'l’âge', stature:'la taille', poids:'une pesée (onglet Mesures)' };
+      toast('Renseigne ' + c.manque.map(m => lib[m] || m).join(', ') + ' dans le calculateur pour ajuster.', 'erreur');
+      return;
+    }
+    const menu = this.menuActif();
+    if(!menu){ toast('Aucun menu actif.', 'erreur'); return; }
+    const res = ajusterMenu(menu.repas, c.cibles, this.cat());   /* catalogue fusionné : gère les aliments perso */
+    menu.repas = res.repas;
+    this.etat.repas.planJour = null;
+    this.dernierMenuGen = { ...res, _action: 'ajuste' };
+    this.store.sauver();
+    toast(`Menu « ${menu.nom} » ajusté à ta cible.`, 'ok');
     this.render();
   }
 
@@ -802,11 +822,16 @@ export class RepasModule {
     if(!res){ box.innerHTML = ''; return; }
     const m = res.macros, e = res.ecarts;
     const sg = (v) => (v >= 0 ? '+' : '') + v;
+    const ajuste = res._action === 'ajuste';
+    const tete = ajuste ? 'Menu ajusté' : 'Menu généré';
+    const conseil = ajuste
+      ? `Ajoute une source (ex. ${res.saturations.includes('glucides') ? 'féculent' : res.saturations.includes('lipides') ? 'matière grasse / oléagineux' : 'aliment'}) à ce menu puis réajuste.`
+      : `Aime plus d'aliments ou décoche « faciles uniquement ».`;
     const sat = res.saturations.length
-      ? `<p class="note" style="color:var(--alerte);margin:6px 0 0">⚠ Cible non atteignable avec ces aliments : ${res.saturations.join(', ')}. Aime plus d'aliments ou décoche « faciles uniquement ».</p>`
-      : `<p class="note" style="color:var(--ok);margin:6px 0 0">✓ Cible atteinte. Menu créé et activé — ajuste-le librement dans « Gérer les menus ».</p>`;
+      ? `<p class="note" style="color:var(--alerte);margin:6px 0 0">⚠ Cible non atteignable avec ces aliments : ${res.saturations.join(', ')}. ${conseil}</p>`
+      : `<p class="note" style="color:var(--ok);margin:6px 0 0">✓ Cible atteinte${ajuste ? ' — menu actuel corrigé en place' : ' — menu créé et activé'}.</p>`;
     box.innerHTML = `
-      <div class="gen-res-tete">Menu généré</div>
+      <div class="gen-res-tete">${tete}</div>
       <div class="gen-res-macros mono">${m.kcal} kcal (${sg(e.kcal)}) · P ${m.prot} (${sg(e.prot)}) · G ${m.gluc} (${sg(e.gluc)}) · L ${m.lip} (${sg(e.lip)}) · fib ${m.fib} (${sg(e.fib)})</div>
       ${sat}`;
   }

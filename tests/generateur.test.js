@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { genererMenu } from '../js/generateur.js';
+import { genererMenu, ajusterMenu } from '../js/generateur.js';
 import { POOL_GENERATEUR, PREP_FACILES } from '../js/data/generateur-pool.js';
+import { ALIMENTS } from '../js/data.js';
 
 /* Le générateur doit tomber JUSTE sur les 3 macros (prot/gluc/lip → kcal), rester dans des
    portions mangeables, respecter goûts/évictions/facilité, et ne jamais lever ni produire de NaN. */
@@ -71,4 +72,43 @@ test('genererMenu : cible irréaliste → saturations signalées, jamais d\'éch
 test('genererMenu : robuste à des options vides / absentes', () => {
   assert.doesNotThrow(() => genererMenu(CIBLES));
   assert.doesNotThrow(() => genererMenu(CIBLES, { aimes: [], evites: [] }));
+});
+
+/* ---- ajusterMenu : corrige un menu existant EN PLACE ---- */
+const MENU = [
+  { id: 'dej', nom: 'Déjeuner', items: [['poulet-blanc', 150], ['riz', 120], ['amandes', 20]] },
+  { id: 'coll', nom: 'Collation', items: [['skyr', 200], ['banane', 1]] },
+];
+const clesMenu = m => m.flatMap(rp => rp.items.map(([c]) => c)).sort();
+
+test('ajusterMenu : conserve la composition (mêmes aliments), rééchelonne les portions', () => {
+  /* cible atteignable avec ces aliments (1 seule source de lipides : amandes) */
+  const cibles = { kcal: 1635, prot: 130, gluc: 200, lip: 35, fib: 12 };
+  const r = ajusterMenu(MENU, cibles, ALIMENTS);
+  assert.deepEqual(clesMenu(r.repas), clesMenu(MENU));     /* mêmes clés, aucun aliment perdu ni ajouté */
+  for(const k of ['prot', 'gluc', 'lip']) assert.ok(Math.abs(r.ecarts[k]) <= cibles[k] * 0.12, `${k} écart ${r.ecarts[k]}`);
+});
+
+test('ajusterMenu : corrige la sur-livraison de protéines d\'un menu fixe', () => {
+  /* menu très protéiné, cible modérée → les portions de protéines baissent vers la cible */
+  const menu = [{ id: 'd', nom: 'D', items: [['poulet-blanc', 300], ['skyr', 400]] }];
+  const protAvant = 0.23 * 300 + 0.11 * 400;   /* ≈ 113 g */
+  const r = ajusterMenu(menu, { kcal: 1000, prot: 90, gluc: 60, lip: 30, fib: 10 }, ALIMENTS);
+  assert.ok(r.macros.prot < protAvant, 'les protéines ont baissé');
+  assert.ok(Math.abs(r.ecarts.prot) <= 90 * 0.15);
+});
+
+test('ajusterMenu : cible impossible avec ces aliments → saturation signalée, pas de crash', () => {
+  /* avoine+riz ne peuvent pas fournir 500 g de glucides (bornés) */
+  const menu = [{ id: 'd', nom: 'D', items: [['avoine', 100], ['riz', 120]] }];
+  const r = ajusterMenu(menu, { kcal: 3000, prot: 60, gluc: 500, lip: 40, fib: 30 }, ALIMENTS);
+  assert.ok(r.saturations.includes('glucides'));
+  assert.ok(Number.isFinite(r.macros.kcal) && r.repas.length > 0);
+});
+
+test('ajusterMenu : robuste (menu vide, items inconnus laissés tels quels)', () => {
+  assert.doesNotThrow(() => ajusterMenu([], CIBLES, ALIMENTS));
+  const r = ajusterMenu([{ id: 'd', nom: 'D', items: [['inconnu-xyz', 100], ['riz', 120]] }], { kcal: 500, prot: 10, gluc: 100, lip: 5, fib: 5 }, ALIMENTS);
+  const cles = r.repas.flatMap(rp => rp.items.map(([c]) => c));
+  assert.ok(cles.includes('inconnu-xyz'));   /* aliment inconnu conservé tel quel */
 });
