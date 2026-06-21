@@ -64,7 +64,11 @@ export function assainirSeance(s){
     }))
     .filter(e => e.series.length);          /* un exercice sans série valide est vide → écarté */
   if(!exercices.length) return null;        /* une séance sans exercice valide est inutile */
-  return { ...s, exercices };
+  const out = { ...s, exercices };
+  /* effort de séance (V4-F1) : optionnels, bornés (jamais NaN). Invalides → supprimés. */
+  if('duree' in out && !(estNombre(out.duree) && out.duree > 0)) delete out.duree;
+  if('rpe' in out && !(estNombre(out.rpe) && out.rpe >= 0 && out.rpe <= 10)) delete out.rpe;
+  return out;
 }
 export function assainirSeances(arr){
   if(!Array.isArray(arr)) return [];
@@ -114,6 +118,17 @@ export function assainirPlats(arr){
     }));
 }
 
+/* ---- état du jour (V4-F1) : [{date, sommeil(h), courbatures(0-10)}] ----
+   Clé de fusion = `date`. On exige une date-chaîne ; sommeil/courbatures sont des nombres
+   ≥ 0 sinon null (jamais NaN). courbatures bornées à 10. Renvoie un tableau. */
+export function assainirEtatsJour(arr){
+  if(!Array.isArray(arr)) return [];
+  const num = (v, max) => (estNombre(v) && v >= 0) ? (max != null ? Math.min(v, max) : v) : null;
+  return arr
+    .filter(e => e && typeof e === 'object' && estChaine(e.date))
+    .map(e => ({ date: e.date, sommeil: num(e.sommeil), courbatures: num(e.courbatures, 10) }));
+}
+
 /* ---- aliments perso (E2) : {cle: {nom, cat, kcal100, prot100, gluc100, lip100, fib100}} ----
    On ne garde que les entrées dont le nom est une chaîne non vide ; les macros absentes
    ou invalides sont ramenées à 0 (jamais NaN). Renvoie toujours un objet. */
@@ -153,5 +168,6 @@ export function assainirEtat(etat){
   if(etat.aliments && typeof etat.aliments === 'object' && 'perso' in etat.aliments)
     etat.aliments.perso = assainirAlimentsPerso(etat.aliments.perso);
   if('plats' in etat) etat.plats = assainirPlats(etat.plats);
+  if('etatsJour' in etat) etat.etatsJour = assainirEtatsJour(etat.etatsJour);
   return etat;
 }

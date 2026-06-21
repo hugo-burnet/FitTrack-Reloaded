@@ -75,5 +75,30 @@ Cf. `phase-4-surcharge-progressive.md`. Livré par lots (F0 d'abord, le plus for
 - [x] **Tests** +17 (`charge.test.js`, `scores.test.js`), 205 verts. `sw.js` v25 (+ charge.js, scores.js précachés). Vérif navigateur (CDP) : ACWR 1.74 → zone risque + alerte, courbe 84 pts, scores cohérents.
 - ⏳ **sRPE** (RPE séance × durée) noté optionnel en F0 : non capté ici (charge externe = tonnage suffit pour ACWR) ; à ajouter avec F1 (champs de récup).
 
-### F1+ — à venir
-Readiness/Recovery/Progression (nécessitent sommeil/courbatures/RIR — Phase 3), fatigue Fitness-Fatigue, alertes stagnation/sous-charge avancées, recommandations (deload/volume), projection de progression, cycles & corrélations.
+### F1 — Récupération & readiness (P1) ✅ FAIT — branche `v4-f1-readiness`
+Livré en 4 sous-lots committables, moteurs purs testés d'abord.
+- [x] **F1.1 — Capture** (migration **schéma 5→6**) : nouvelle collection `etat.etatsJour`
+  `[{date, sommeil(h), courbatures(0-10)}]` (defaults + `Store._appliquerDefauts` +
+  `assainirEtatsJour`). Champs d'effort de séance `duree`(min)/`rpe`(0-10) **optionnels**,
+  bornés dans `assainirSeance` — ajoutés aux séances **sans migration** : ils voyagent déjà
+  via la fusion (séances fusionnées par date+jourId, objet entier) → **`fusion.js` inchangé**.
+  ⚠ `etatsJour` (collection nouvelle) **n'est pas encore synchronisée** : son ajout à
+  `fusion.js` exige une validation explicite (cf. contrainte absolue). Local-only en attendant
+  (dégradé gracieux : les scores se calculent localement). **+5 tests**.
+- [x] **F1.2 — Moteurs** `js/readiness.js` (purs) : `chargeInterneSeance` (sRPE Foster = RPE×durée),
+  `fitnessFatigue` (Banister, **réutilise les EWMA de charge.js** : fitness=chronique, fatigue=aiguë,
+  forme=TSB), notes élémentaires 0-1 (sommeil/courbatures/forme/ACWR/délai/fatigue),
+  `scoreReadiness` (prospectif, feu vert/orange/rouge), `scoreRecovery` (rétrospectif),
+  `scoreProgression` (% exos en hausse via `bilanForce` + PR e1RM + tendance de volume),
+  orchestrateurs `readinessDuJour`/`recoveryDuJour`/`etatJourPour`/`delaiDerniereSeance`.
+  Dégradé gracieux partout. **+15 tests**. `sw.js` v26 (+ readiness.js précaché).
+- [x] **F1.3 — Alertes** (`scores.js`) : `alerteStagnation` (force plate + 0 PR malgré bonne
+  assiduité → « change de stimulus ») ; `alerteSousCharge` **enrichie** par le score de récup
+  (rétro-compatible : recovery optionnel). **+2 tests**.
+- [x] **F1.4 — UI** : onglet Verdict, carte « **Forme du jour** » (saisie sommeil/courbatures du
+  jour, feu + reco readiness, jauges Readiness/Récup/Progression, alerte stagnation) ;
+  onglet Muscu, champs **Durée/RPE** optionnels (brouillon + séance). Vérif navigateur (CDP,
+  cache désactivé) : readiness 95 feu vert après saisie, champs présents, zéro erreur console.
+- **205 → 227 tests verts.** `sw.js` v26.
+- ⏳ Reste F2+ : deload auto, ajustement de volume, reco contextualisée, projection de
+  progression, cycles & corrélations. Sync de `etatsJour` (extension `fusion.js`) à valider.

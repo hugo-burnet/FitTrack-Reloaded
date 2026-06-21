@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { scoreCompliance, scoreRisk, alerteSurcharge, alerteSousCharge } from '../js/scores.js';
+import { scoreCompliance, scoreRisk, alerteSurcharge, alerteSousCharge, alerteStagnation } from '../js/scores.js';
 
 test('scoreCompliance : tout à la cible → 100, confiance fiable', () => {
   const r = scoreCompliance({ seancesRealisees: 5, seancesPlanifiees: 5, joursProt: 7, joursKcal: 7 });
@@ -58,4 +58,19 @@ test('alerteSousCharge : ACWR < 0,8 (et > 0) déclenche', () => {
   assert.equal(alerteSousCharge({ acwr: 0.7 }).cls, 'v-hausse');
   assert.equal(alerteSousCharge({ acwr: 1.0 }).actif, false);
   assert.equal(alerteSousCharge({ acwr: null }).actif, false);
+});
+
+test('alerteSousCharge enrichie : message selon la récupération', () => {
+  assert.equal(alerteSousCharge({ acwr: 0.7, recovery: 80 }).titre, 'Feu vert pour pousser');
+  assert.equal(alerteSousCharge({ acwr: 0.7, recovery: 30 }).titre, 'Marge de charge, mais récup basse');
+  assert.equal(alerteSousCharge({ acwr: 0.7, recovery: 50 }).titre, 'Marge pour pousser');   /* récup moyenne → message neutre */
+});
+
+test('alerteStagnation : stagne + bonne adhérence + 0 PR → déclenche ; sinon non', () => {
+  assert.equal(alerteStagnation({ niveauProgression: 'stagne', prs: 0, bonneAdherence: true }).actif, true);
+  assert.equal(alerteStagnation({ niveauProgression: 'stagne', prs: 0, bonneAdherence: true }).cls, 'v-neutre');
+  assert.equal(alerteStagnation({ niveauProgression: 'stagne', prs: 0, bonneAdherence: false }).actif, false);  /* pas assidu → pas de stagnation */
+  assert.equal(alerteStagnation({ niveauProgression: 'progresse', prs: 2, bonneAdherence: true }).actif, false);
+  assert.equal(alerteStagnation({ niveauProgression: 'stagne', prs: 3, bonneAdherence: true }).actif, false);    /* des PR récents → pas une vraie stagnation */
+  assert.equal(alerteStagnation({}).actif, false);
 });

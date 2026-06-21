@@ -19,6 +19,8 @@ L'arbre est **paramétré par ton objectif** (sèche / recompo / prise de masse)
 
 **Pilotage de la charge** (préparation physique) : à partir du **tonnage de chaque séance**, l'app calcule la **charge aiguë** (moyenne exponentielle 7 j) et **chronique** (28 j), leur ratio **ACWR** (zone optimale 0,8–1,3 ; risque > 1,5), la **monotonie/strain de Foster**, et en dérive deux scores 0-100 — **Risque** (surmenage) et **Assiduité** — avec une **alerte de surcharge/sous-charge** et une **courbe aiguë vs chronique**. Tout en dégradé gracieux : indicatif tant que l'historique est mince, fiable à mesure que les séances s'accumulent.
 
+**Forme du jour** (récupération & readiness) : tu notes ton **sommeil** et tes **courbatures** du jour, et — en option — la **durée** et l'**effort (RPE)** de chaque séance. L'app en tire trois scores 0-100 : **Readiness** (prospectif, « peux-tu pousser aujourd'hui ? » → feu vert / allège / repos), croisant sommeil, courbatures, **forme** (fitness−fatigue, modèle de Banister réutilisant les EWMA de charge) et ACWR ; **Récupération** (rétrospectif) ; et **Progression** (tendance de tes records e1RM + fréquence de PR + volume). Plus une **alerte de stagnation** quand la force plafonne malgré une bonne assiduité. Toujours indicatif tant que les entrées manquent — jamais bloquant.
+
 Sous le verdict, un read **« Cette semaine »** entre deux verdicts mensuels : tendance lissée, **adhérence protéines (jours à la cible / 7)** et **séances sur 7 j**, plus une alerte **« force en baisse »** quand le 1RM estimé décroche sur plusieurs exercices récents — signal précoce de sous-alimentation.
 
 ### 🍽️ Repas
@@ -78,7 +80,7 @@ Sur **GitHub Pages**, aucune manipulation : les modules ES sont servis en HTTP, 
 
 ## Tests
 
-Les moteurs purs sont couverts par des tests unitaires (**205 tests**), via le **runner natif de Node** — aucune dépendance à installer :
+Les moteurs purs sont couverts par des tests unitaires (**227 tests**), via le **runner natif de Node** — aucune dépendance à installer :
 
 ```bash
 npm test          # ou : node --test
@@ -93,9 +95,10 @@ Cibles :
 - `besoins.js` — BMR / TDEE / split macros (calculateur).
 - `verdict.js` — l'arbre de décision pour chaque objectif (sèche/recompo/masse) + anti-réactivité.
 - `charge.js` — charge aiguë/chronique, ACWR & zones, monotonie/strain, série.
-- `scores.js` — Compliance, Risk, alertes surcharge/sous-charge.
+- `scores.js` — Compliance, Risk, alertes surcharge / sous-charge / stagnation.
+- `readiness.js` — sRPE (Foster), fitness-fatigue (Banister), scores Readiness / Recovery / Progression.
 - `bilan.js` — `adherenceHebdo`, `bilanForce`. · `xp.js` — XP, niveaux, gating de progression.
-- `migrations.js` / `sanitize.js` / `defaults.js` / `fusion.js` — schéma 1→5, assainissement, fusion par date/id/clé.
+- `migrations.js` / `sanitize.js` / `defaults.js` / `fusion.js` — schéma 1→6, assainissement, fusion par date/id/clé.
 - `RepasModule` — moteur de comblement protéique.
 
 ---
@@ -138,6 +141,7 @@ js/
   verdict.js          arbre de décision multi-objectif (sèche/recompo/masse)
   charge.js           pilotage de charge (aiguë/chronique, ACWR, monotonie/strain)
   scores.js           scores composites (Risque, Assiduité) + alertes
+  readiness.js        récup & readiness (fitness-fatigue, Readiness/Recovery/Progression)
   bilan.js            reads hebdo (adhérence, signal de force)
   charts.js           config Chart.js partagée
   RestTimer.js        chrono de repos

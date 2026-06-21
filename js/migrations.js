@@ -12,7 +12,7 @@
    l'app. Les évolutions v3+ (profil, macros complètes, multi-menus, charge de
    séance…) s'ajouteront ici, chacune testée isolément. */
 
-export const SCHEMA_ACTUEL = 5;
+export const SCHEMA_ACTUEL = 6;
 
 export const MIGRATIONS = [
   /* v1 → v2 : profil utilisateur + objectif explicite (E5). Le calculateur de
@@ -43,6 +43,14 @@ export const MIGRATIONS = [
      macros dérivées des composants. Collection vide par défaut. */
   { de:4, vers:5, appliquer(etat){
       if(!Array.isArray(etat.plats)) etat.plats = [];
+  } },
+  /* v5 → v6 : récupération & readiness (V4-F1). Nouvelle collection « état du jour »
+     [{date, sommeil(h), courbatures(0-10)}] alimentée par la saisie de récup ; consommée
+     par readiness.js (scores Readiness/Recovery). Les champs d'effort de séance
+     (`duree` min, `rpe` 0-10) sont optionnels et s'ajoutent aux séances existantes sans
+     migration (dégradé gracieux : leur absence n'empêche aucun calcul). */
+  { de:5, vers:6, appliquer(etat){
+      if(!Array.isArray(etat.etatsJour)) etat.etatsJour = [];
   } },
 ];
 

@@ -38,6 +38,9 @@ export function etatParDefaut(){
     planAlimActif: 'principal',
     /* plats composés (E4) : recettes réutilisables {id, nom, composants:[[cle,qté]]} */
     plats: [],
+    /* état du jour (V4-F1) : récup quotidienne {date, sommeil(h), courbatures(0-10)}.
+       Alimente les scores Readiness/Recovery (readiness.js). Dégradé gracieux : vide = scores indicatifs. */
+    etatsJour: [],
     journalRepas: [],
     programmes: cloneProfond(PROG_DEFAUT),
     programmeActif: PROG_DEFAUT[0].id,

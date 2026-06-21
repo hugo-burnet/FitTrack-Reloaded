@@ -80,6 +80,31 @@
       <div class="sem-force" id="sem-force"></div>
     </div>
 
+    <!-- Récupération & readiness (V4-F1) : saisie récup du jour + scores Readiness/Recovery/Progression -->
+    <div class="carte" id="carte-readiness">
+      <h2>Forme du jour</h2>
+      <div class="recup-saisie">
+        <label class="recup-champ">Sommeil <span class="recup-unite">h</span><input type="number" id="recup-sommeil" step="0.5" min="0" max="24" inputmode="decimal" placeholder="—"></label>
+        <label class="recup-champ">Courbatures <span class="recup-unite">/10</span><input type="number" id="recup-courb" step="1" min="0" max="10" inputmode="numeric" placeholder="—"></label>
+        <button class="btn btn-2 recup-save" id="recup-save" type="button">Enregistrer</button>
+      </div>
+      <div class="readiness-feu" id="readiness-feu">
+        <span class="rd-pastille" id="rd-pastille"></span>
+        <span class="rd-libelle" id="rd-libelle">Renseigne ton sommeil et tes courbatures pour estimer ta forme du jour.</span>
+      </div>
+      <p class="readiness-reco" id="rd-reco"></p>
+      <div class="charge-grille">
+        <div class="charge-bloc"><div class="charge-lib">Readiness</div><div class="charge-val mono" id="rd-readiness">—</div><div class="charge-sub" id="rd-readiness-sub"></div></div>
+        <div class="charge-bloc"><div class="charge-lib">Récupération</div><div class="charge-val mono" id="rd-recovery">—</div><div class="charge-sub" id="rd-recovery-sub"></div></div>
+        <div class="charge-bloc"><div class="charge-lib">Progression</div><div class="charge-val mono" id="rd-progression">—</div><div class="charge-sub" id="rd-progression-sub"></div></div>
+      </div>
+      <div id="stagnation-alerte" class="verdict cache" style="margin-top:12px">
+        <div class="verdict-tampon" id="stagnation-t"></div>
+        <p class="verdict-expl" id="stagnation-e" style="margin:0"></p>
+      </div>
+      <p class="note">Le <b>readiness</b> (prospectif) répond « peux-tu pousser aujourd'hui ? » d'après ton sommeil, tes courbatures, ta forme (charge chronique − aiguë) et ton ACWR. <b>Récupération</b> = rétrospectif ; <b>progression</b> = tendance de tes records (e1RM). Tout reste indicatif tant que les entrées manquent.</p>
+    </div>
+
     <!-- Pilotage de la charge (V4-F0) : aiguë/chronique/ACWR + scores Risk & Compliance + alerte -->
     <div class="carte" id="carte-charge">
       <h2>Pilotage de la charge</h2>
