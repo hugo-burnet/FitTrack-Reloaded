@@ -35,7 +35,7 @@ Plan alimentaire du jour avec **objectif kcal ajustable**. Protéines/lipides fi
 - **Base d'aliments curée** (~170 aliments en 13 catégories : féculents, légumineuses, viandes, poissons, laitages, fruits, légumes, oléagineux, sucré, boissons, plats, compléments…) + **éditeur d'aliments perso**. Le sélecteur hors-plan a **recherche** (insensible aux accents) et **filtre par catégorie**.
 - **Multi-menus** : crée plusieurs menus (Sèche, Masse, Maintien…), bascule de l'un à l'autre, duplique / renomme / supprime. La cible, l'écart **et les courses suivent le menu actif**.
 - **Plats composés** : enregistre une recette (liste d'aliments + quantités) ; ses macros sont **dérivées des composants** et tu la journalises **d'un tap**.
-- **Générateur de menu adapté** : à partir de ta cible (kcal **et** protéines/glucides/lipides/fibres issues du calculateur) et de tes **goûts** (aliments aimés / à éviter, option « plats faciles uniquement » : zéro prépa, cuiseur à riz, airfryer), l'app **génère un menu mangeable qui tombe juste sur les macros** — pas seulement les kcal. Un **assistant guidé** (plein écran, une question à la fois : objectif → cuisiner ? → goûts par catégorie) te mène jusqu'au menu ; ou en manuel, tu peux **générer un nouveau menu** (ton menu actuel est conservé) ou **ajuster le menu actuel en place** (mêmes aliments, portions corrigées). Corrige le travers du plan fixe, qui sur-livrait les protéines (seuls les glucides s'ajustaient).
+- **Générateur de menu adapté** : à partir de ta cible (kcal **et** protéines/glucides/lipides/fibres issues du calculateur) et de tes **goûts** (aliments aimés / à éviter, option « plats faciles uniquement » : zéro prépa, cuiseur à riz, airfryer), l'app **génère un menu mangeable qui tombe juste sur les macros** — pas seulement les kcal. Tu peux aussi déclarer des **régimes / allergies** (végétarien, végan, sans gluten, sans lactose, sans fruits à coque, sans poisson, sans œuf, sans soja) : les aliments concernés sont alors **exclus** du menu généré. Un **assistant guidé** (plein écran, une question à la fois : objectif → cuisiner ? → régimes/allergies → goûts par catégorie) te mène jusqu'au menu ; ou en manuel, tu peux **générer un nouveau menu** (ton menu actuel est conservé) ou **ajuster le menu actuel en place** (mêmes aliments, portions corrigées). Corrige le travers du plan fixe, qui sur-livrait les protéines (seuls les glucides s'ajustaient).
 - **Comblement protéique** : si un déficit de protéines subsiste, l'app suggère des options chiffrées (whey / skyr / poulet) à ajouter d'un tap.
 
 ### 🏋️ Muscu
@@ -85,7 +85,7 @@ Sur **GitHub Pages**, aucune manipulation : les modules ES sont servis en HTTP, 
 
 ## Tests
 
-Les moteurs purs sont couverts par des tests unitaires (**341 tests**), via le **runner natif de Node** — aucune dépendance à installer :
+Les moteurs purs sont couverts par des tests unitaires (**356 tests**), via le **runner natif de Node** — aucune dépendance à installer :
 
 ```bash
 npm test          # ou : node --test
@@ -99,6 +99,7 @@ Cibles :
 - `plans.js` — menu actif & repas actifs (multi-menus).
 - `besoins.js` — BMR / TDEE / split macros (calculateur).
 - `generateur.js` / `generateur-pool.js` — génération **et ajustement en place** d’un menu visant les 3 macros, selon goûts & facilité. Le pool « faciles » compte **81 aliments** (protéines, glucides, lipides, fruits & légumes) puisés dans la base curée.
+- `regimes.js` — régimes & allergies (végétarien, végan, sans gluten/lactose/fruits à coque/poisson/œuf/soja) ; filtre dur du générateur.
 - `verdict.js` — l'arbre de décision pour chaque objectif (sèche/recompo/masse) + anti-réactivité.
 - `charge.js` — charge aiguë/chronique, ACWR & zones, monotonie/strain, série, charge hebdo.
 - `scores.js` — Compliance, Risk, alertes surcharge / sous-charge / stagnation, deload détecté.
@@ -148,7 +149,8 @@ js/
   catalogue.js        fusion base + aliments perso, recherche / filtre
   plans.js            multi-menus (menu actif & repas actifs)
   besoins.js          calculateur BMR → TDEE → cible kcal/macros (E5)
-  generateur.js       génération de menu adapté (cibles macros + goûts)
+  generateur.js       génération de menu adapté (cibles macros + goûts + régimes)
+  regimes.js          régimes & allergies (filtre du générateur)
   verdict.js          arbre de décision multi-objectif (sèche/recompo/masse)
   charge.js           pilotage de charge (aiguë/chronique, ACWR, monotonie/strain, hebdo)
   scores.js           scores composites (Risque, Assiduité) + alertes + deload détecté

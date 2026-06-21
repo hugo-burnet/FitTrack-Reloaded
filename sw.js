@@ -5,7 +5,7 @@
    un correctif se propage à la visite suivante sans bump manuel de version.
    L'API GitHub (données + token) n'est JAMAIS interceptée → toujours réseau direct. */
 
-const VERSION = 'v36';
+const VERSION = 'v37';
 const CACHE = `carnet-recompo-${VERSION}`;
 
 /* coquille précachée — tout en relatif (résolu contre l'emplacement du SW, donc OK
@@ -16,7 +16,7 @@ const SHELL = [
   './js/main.js', './js/App.js', './js/Store.js', './js/Sync.js', './js/gist.js',
   './js/fusion.js', './js/ui.js', './js/idb.js', './js/sanitize.js', './js/data.js', './js/utils.js', './js/nutrition.js',
   './js/repas-logique.js', './js/muscu-perf.js',
-  './js/data/aliments-base.js', './js/data/generateur-pool.js', './js/catalogue.js', './js/plans.js', './js/generateur.js',
+  './js/data/aliments-base.js', './js/data/generateur-pool.js', './js/catalogue.js', './js/plans.js', './js/generateur.js', './js/regimes.js',
   './js/defaults.js', './js/migrations.js', './js/besoins.js',
   './js/charts.js', './js/stats.js', './js/progression.js', './js/xp.js', './js/verdict.js', './js/bilan.js', './js/RestTimer.js',
   './js/charge.js', './js/scores.js', './js/readiness.js', './js/projection.js', './js/volume.js', './js/cycles.js', './js/correlations.js',
