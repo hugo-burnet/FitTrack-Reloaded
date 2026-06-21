@@ -1,13 +1,18 @@
 import { $, qsa, fmtDate, echap, aujourdHui, triDate } from '../utils.js';
 import { toast, toastUndo, confirmer, demander } from '../ui.js';
-import { e1rm } from '../stats.js';
 import { optCommun } from '../charts.js';
 import { RestTimer } from '../RestTimer.js';
+import { recommander, reposRecommande, fmtRepos, meilleurE1rm, PAS_DEFAUT } from '../progression.js';
+import { xpTotal, xpExerciceTotal, infosNiveau, fmtXp, XP_BASE_EXO } from '../xp.js';
 import {
-  parseFourchette, recommander, reposRecommande, fmtRepos,
-  meilleurE1rm, meilleureCharge, meilleurTemps, tempsSousTension, PAS_DEFAUT
-} from '../progression.js';
-import { xpTotal, xpGagneExercice, xpExerciceTotal, infosNiveau, niveauPourXp, fmtXp, XP_BASE_EXO } from '../xp.js';
+  dernierePerf as dernierePerfP, perfPrecedente as perfPrecedenteP, historiqueExo as historiqueExoP,
+  tousLesExos as tousLesExosP, fmtPerf as fmtPerfP, brouillonDerniere, permuterExo,
+  construireRecap as construireRecapP, serieProgression
+} from '../muscu-perf.js';
+
+/* couleur d'un point de progression selon sa tendance vs le point précédent
+   (vert = monte, rouge = baisse, bleu = stable / premier point / indéfini) */
+const TENDANCE_COULEUR = { up:'#4cb784', down:'#e07a63', flat:'#4d7ef0', none:'#4d7ef0' };
 
 /* ================= MUSCU : programmes, séances, surcharge progressive, chrono ================= */
 export class MuscuModule {
@@ -107,43 +112,10 @@ export class MuscuModule {
     });
   }
 
-  /* ---- dernière perf notée pour un exercice (par nom) → prérempli les placeholders ---- */
-  dernierePerf(nom){
-    for(let i=this.etat.seances.length-1;i>=0;i--){
-      const ex = this.etat.seances[i].exercices.find(e=>e.nom===nom);
-      if(ex) return { date:this.etat.seances[i].date, series:ex.series, unilateral:ex.unilateral };
-    }
-    return null;
-  }
-  /* perf de l'occurrence précédant strictement `date` (pour les deltas / recap) */
-  perfPrecedente(date, nom){
-    let prev = null;
-    this.etat.seances.forEach(s=>{ if(s.date < date){ const e = s.exercices.find(x=>x.nom===nom); if(e) prev = e; } });
-    return prev;
-  }
-  fmtPerf(series, unilateral){
-    if(!series || !series.length) return '';
-    const cote = unilateral ? '/côté' : '';
-    /* gainage : on affiche des temps de maintien, pas des charges (« 30 s · 3/3/3 ») */
-    if(series[0] && series[0].duree!=null){
-      const durees = series.map(s=>s.duree);
-      const memeDuree = durees.every(d=>d===durees[0]);
-      if(memeDuree){
-        const d = durees[0];
-        return (d!=null ? d+' s'+(cote?' '+cote:'')+' · ' : '') + series.map(s=>s.reps).join('/');
-      }
-      return series.map(s=>(s.duree!=null ? s.duree+'s×' : '') + s.reps).join(' · ') + (unilateral ? ' /côté' : '');
-    }
-    const charges = series.map(s=>s.charge);
-    const memeCharge = charges.every(c=>c===charges[0]);
-    if(memeCharge){
-      /* séries droites : forme compacte « 40 kg · 10/9/8 » */
-      const c = charges[0];
-      return (c!=null ? c+' kg'+cote+' · ' : '') + series.map(s=>s.reps).join('/');
-    }
-    /* charges variables : détail série par série « 40×10 · 38×9 · 35×8 » (la charge max ne suffit pas) */
-    return series.map(s=>(s.charge!=null ? s.charge+'×' : '') + s.reps).join(' · ') + (unilateral ? ' /côté' : '');
-  }
+  /* ---- perf : lecture/formatage (moteur pur muscu-perf.js) ---- */
+  dernierePerf(nom){ return dernierePerfP(this.etat.seances, nom); }
+  perfPrecedente(date, nom){ return perfPrecedenteP(this.etat.seances, date, nom); }
+  fmtPerf(series, unilateral){ return fmtPerfP(series, unilateral); }
 
   /* ---- affichage de l'onglet Muscu ---- */
   render(){
@@ -209,16 +181,8 @@ export class MuscuModule {
   /* ---- « comme la dernière fois » : préremplit les vraies valeurs de la dernière séance ---- */
   prefillDerniere(){
     const jour = this.jourCourant(); if(!jour) return;
-    const blocs = [], unis = [];
-    jour.exercices.forEach((ex,ei)=>{
-      const last = this.dernierePerf(ex.nom);
-      blocs[ei] = last ? last.series.map(s=>({
-        charge: ex.gainage ? (s.duree!=null?String(s.duree):'') : (s.charge!=null?String(s.charge):''),
-        reps: s.reps!=null?String(s.reps):'' })) : [];
-      unis[ei] = last && last.unilateral!=null ? !!last.unilateral : !!ex.unilateral;
-    });
     const dateEl = $('muscu-date');
-    this.etat.brouillons[jour.id] = { date: dateEl ? dateEl.value : aujourdHui(), blocs, unis };
+    this.etat.brouillons[jour.id] = brouillonDerniere(this.etat.seances, jour, dateEl ? dateEl.value : aujourdHui());
     this.store.sauver();
     this.renderSeanceForm();
   }
@@ -234,16 +198,8 @@ export class MuscuModule {
     if(this.histoOuverte.has(nom)) this.histoOuverte.delete(nom); else this.histoOuverte.add(nom);
     this.renderSeanceForm();
   }
-  /* n dernières séances contenant cet exercice, plus récente en premier */
-  historiqueExo(nom, n=3){
-    const out = [];
-    for(let i=this.etat.seances.length-1; i>=0 && out.length<n; i--){
-      const s = this.etat.seances[i];
-      const ex = s.exercices.find(e=>e.nom===nom);
-      if(ex) out.push({ date:s.date, series:ex.series, unilateral:ex.unilateral, jourNom:s.jourNom });
-    }
-    return out;
-  }
+  /* n dernières séances contenant cet exercice, plus récente en premier (pur muscu-perf.js) */
+  historiqueExo(nom, n=3){ return historiqueExoP(this.etat.seances, nom, n); }
   renderHistoPanel(ex, ei){
     const list = this.historiqueExo(ex.nom, 3);
     const lignes = list.length
@@ -442,7 +398,7 @@ export class MuscuModule {
     if(!exercices.length){ toast('Note au moins une série (reps) sur un exercice.', 'erreur'); return; }
 
     /* recap calculé AVANT insertion (comparé à l'historique existant) */
-    const recap = this.construireRecap(date, jour, exercices);
+    const recap = construireRecapP(this.etat.seances, date, jour, exercices);
 
     const { duree, rpe } = this.lireEffort();   /* effort de séance (V4-F1), optionnel */
     const seance = { date, programmeId:prog.id, jourId:jour.id, jourNom:jour.nom, exercices };
@@ -458,47 +414,6 @@ export class MuscuModule {
     this._relacherWake();   /* séance enregistrée → on laisse l'écran s'éteindre */
     if(this.etat.autoExport && this.app.donnees) this.app.donnees.exporterJSON();
     this.render();
-  }
-
-  /* ---- recap de séance : deltas vs occurrence précédente (hausses ET baisses) ---- */
-  construireRecap(date, jour, exercices){
-    const lignes = exercices.map(exo=>{
-      const perf = this.fmtPerf(exo.series, exo.unilateral);   /* détail réel des séries (charges variables incluses) */
-      const prev = this.perfPrecedente(date, exo.nom);
-      /* gainage : on compare le temps de maintien et le temps sous tension, pas une charge */
-      if(exo.gainage){
-        const tNow = meilleurTemps(exo.series), tutNow = tempsSousTension(exo.series);
-        if(!prev) return { nom:exo.nom, gainage:true, statut:'nouveau', perf };
-        const tPrev = meilleurTemps(prev.series), tutPrev = tempsSousTension(prev.series);
-        const dT = (tNow!=null && tPrev!=null) ? tNow - tPrev : null;
-        let ton = 'flat';
-        if(tutNow > tutPrev + 1e-9) ton='up'; else if(tutNow < tutPrev - 1e-9) ton='down';
-        return { nom:exo.nom, gainage:true, statut:'compare', perf, dT, ton };
-      }
-      const e1Now = meilleurE1rm(exo.series), cNow = meilleureCharge(exo.series);
-      if(!prev) return { nom:exo.nom, statut:'nouveau', perf, cNow, e1Now };
-      const e1Prev = meilleurE1rm(prev.series), cPrev = meilleureCharge(prev.series);
-      const dE1 = (e1Now!=null && e1Prev!=null) ? e1Now - e1Prev : null;
-      const dC  = (cNow!=null && cPrev!=null) ? cNow - cPrev : null;
-      let ton = 'flat';
-      if(dE1!=null){ if(dE1 > 0.1) ton='up'; else if(dE1 < -0.1) ton='down'; }
-      return { nom:exo.nom, statut:'compare', perf, cNow, cPrev, dC, e1Now, e1Prev, dE1, ton };
-    });
-    const monte = lignes.filter(l=>l.ton==='up').length;
-    const baisse = lignes.filter(l=>l.ton==='down').length;
-    /* XP : baseline = tout SAUF une éventuelle occurrence déjà enregistrée de cette
-       séance (date+jour) — ainsi une ré-édition ne double-compte pas. Chaque exercice
-       ne rapporte que s'il a fait mieux que son occurrence précédente (cf. xp.js). */
-    const base = this.etat.seances.filter(s=>!(s.date===date && s.jourId===jour.id));
-    const avant = xpTotal(base);
-    let xpGagne = 0, ameliores = 0;
-    exercices.forEach(exo=>{
-      const g = xpGagneExercice(exo, this.perfPrecedente(date, exo.nom));
-      if(g>0){ xpGagne += g; ameliores++; }
-    });
-    const niv = infosNiveau(avant + xpGagne);
-    const levelUp = niv.niveau - niveauPourXp(avant);
-    return { date, jourNom:jour.nom, lignes, monte, baisse, xpGagne, ameliores, total:exercices.length, niv, levelUp };
   }
 
   afficherRecap(){
@@ -589,12 +504,7 @@ export class MuscuModule {
   }
 
   /* ---- progression par exercice (1RM estimé Epley + volume) ---- */
-  tousLesExos(){
-    const set = new Set();
-    this.etat.programmes.forEach(p=>p.jours.forEach(j=>j.exercices.forEach(e=>{ if(e.nom) set.add(e.nom); })));
-    this.etat.seances.forEach(s=>s.exercices.forEach(e=>set.add(e.nom)));
-    return [...set].sort((a,b)=>a.localeCompare(b,'fr'));
-  }
+  tousLesExos(){ return tousLesExosP(this.etat.programmes, this.etat.seances); }
   majSelectExoProgression(){
     const sel = $('prog-exo');
     const exos = this.tousLesExos();
@@ -606,36 +516,9 @@ export class MuscuModule {
   }
   dessinerProgression(nom){
     this.exoProgressionSel = nom;
-    /* gainage : la courbe suit le temps de maintien (s) et le temps sous tension, pas un 1RM */
-    const estGainage = this.etat.seances.some(s=>{ const e=s.exercices.find(x=>x.nom===nom); return e && e.series.some(se=>se.duree!=null); });
-    const pts = [];
-    this.etat.seances.forEach(s=>{
-      const ex = s.exercices.find(e=>e.nom===nom);
-      if(!ex) return;
-      let best=null, vol=0;
-      ex.series.forEach(se=>{
-        if(se.duree!=null){                            /* gainage : meilleur temps + temps sous tension */
-          vol += se.duree*(se.reps||0);
-          if(best==null || se.duree>best) best=se.duree;
-        } else {
-          vol += (se.charge||0)*se.reps;
-          const e = e1rm(se.charge, se.reps);  /* 1RM estimé = par côté pour l'unilatéral (charge d'un côté) */
-          if(e!=null && (best==null || e>best)) best=e;
-        }
-      });
-      if(ex.unilateral) vol *= 2;            /* volume total = les deux côtés */
-      pts.push({ date:s.date, e1rm:best, vol });
-    });
-    pts.sort((a,b)=>a.date.localeCompare(b.date));
-    /* couleur des points : vert si la mesure monte vs point précédent, rouge si elle baisse */
-    const couleursPts = pts.map((p,i)=>{
-      if(i===0 || p.e1rm==null || pts[i-1].e1rm==null) return '#4d7ef0';
-      if(p.e1rm > pts[i-1].e1rm + 0.05) return '#4cb784';
-      if(p.e1rm < pts[i-1].e1rm - 0.05) return '#e07a63';
-      return '#4d7ef0';
-    });
-    const labelMesure = estGainage ? 'Temps max (s)' : '1RM estimé (kg)';
-    const labelVol = estGainage ? 'Temps sous tension (s·reps)' : 'Volume (kg·reps)';
+    /* données de la série (pur muscu-perf.js) : points triés + tendance ; ici on ne fait que dessiner */
+    const { pts, labelMesure, labelVol } = serieProgression(this.etat.seances, nom);
+    const couleursPts = pts.map(p => TENDANCE_COULEUR[p.tendance] || TENDANCE_COULEUR.none);
     const ctx = $('graph-prog');
     if(this.chProg) this.chProg.destroy();
     this.chProg = new Chart(ctx,{type:'line',data:{labels:pts.map(p=>fmtDate(p.date)),datasets:[
@@ -725,13 +608,7 @@ export class MuscuModule {
      permute ei↔ei+dir dans le programme ; déplace aussi le brouillon en cours (blocs/unis
      sont indexés par position) pour ne pas raccrocher des séries au mauvais exercice. */
   _permuterExo(jour, ei, dir){
-    const exos = jour.exercices;
-    const j = ei + dir;
-    if(j < 0 || j >= exos.length) return false;
-    const swap = a => { if(Array.isArray(a)){ const t = a[ei]; a[ei] = a[j]; a[j] = t; } };
-    swap(exos);
-    const d = this.etat.brouillons[jour.id];
-    if(d){ swap(d.blocs); swap(d.unis); }
+    if(!permuterExo(jour.exercices, this.etat.brouillons[jour.id], ei, dir)) return false;
     this.store.sauver();
     return true;
   }
