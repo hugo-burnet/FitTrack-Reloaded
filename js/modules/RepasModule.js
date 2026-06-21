@@ -32,6 +32,8 @@ export class RepasModule {
     this.platComposants = [];       /* composants en cours de saisie [[cle,qté],…] */
     this.genOuvert = false;         /* générateur de menu (Nutri F1) déplié ? */
     this.dernierMenuGen = null;     /* dernier résultat de génération (pour l'aperçu) */
+    this.asstOuvert = false;        /* assistant guidé de menu ouvert ? */
+    this.asstEtape = 0;             /* étape courante de l'assistant */
     this.bind();
   }
 
@@ -168,6 +170,7 @@ export class RepasModule {
       if(genChip){ this.cyclerPrefGen(genChip.dataset.genCle); return; }
       if(e.target.closest('#btn-gen-lancer')){ this.genererMenuAuto(); return; }
       if(e.target.closest('#btn-gen-ajuster')){ this.ajusterMenuActuel(); return; }
+      if(e.target.closest('#btn-asst')){ this.ouvrirAssistant(); return; }
       const carte = e.target.closest('[data-action="prendre-repas"]');
       if(carte){ this.prendreRepas(carte.dataset.id); return; }
     });
@@ -191,6 +194,18 @@ export class RepasModule {
       if(e.target.id==='bes-age' || e.target.id==='bes-stature') this.majApercuProfil();   /* maj profil + aperçu live à la frappe */
     });
     $('obj-kcal').addEventListener('change', () => this.majObjectif());
+
+    /* assistant guidé de menu (overlay hors #ong-repas → écouteur dédié) */
+    const asst = $('assistant-menu');
+    if(asst) asst.addEventListener('click', e => {
+      if(e.target.closest('#asst-fermer') || e.target.closest('.assistant-fond')){ this.fermerAssistant(); return; }
+      if(e.target.closest('#asst-retour')){ this.asstRetour(); return; }
+      if(e.target.closest('#asst-suivant')){ this.asstSuivant(); return; }
+      const obj = e.target.closest('[data-asst-obj]'); if(obj){ this.asstChoisirObjectif(obj.dataset.asstObj); return; }
+      const fac = e.target.closest('[data-asst-facile]'); if(fac){ this.asstSetFacile(fac.dataset.asstFacile === '1'); return; }
+      if(e.target.closest('[data-asst-ajuster]')){ this.fermerAssistant(); this.ajusterMenuActuel(); return; }
+      const chip = e.target.closest('[data-gen-cle]'); if(chip){ this.cyclerPrefGen(chip.dataset.genCle); return; }
+    });
   }
 
   /* ---- calculs nutritionnels (moteur pur dans nutrition.js) ---- */
@@ -743,7 +758,7 @@ export class RepasModule {
     else if(aime) p.evites.push(cle);             /* aimé → évité */
     /* évité → neutre : déjà retiré des deux */
     this.store.sauver();
-    this.renderGen();
+    if(this.asstOuvert) this.renderAsst(); else this.renderGen();
   }
 
   genererMenuAuto(){
@@ -785,6 +800,89 @@ export class RepasModule {
     this.render();
   }
 
+  /* ================= ASSISTANT GUIDÉ (overlay plein écran, 1 question/étape) ================= */
+  asstSteps(){
+    return [
+      { type:'objectif' },
+      { type:'facile' },
+      { type:'role', role:'prot',  q:'Tes sources de protéines préférées ?' },
+      { type:'role', role:'gluc',  q:'Tes féculents / glucides préférés ?' },
+      { type:'role', role:'lip',   q:'Tes sources de bon gras ?' },
+      { type:'role', role:'fibre', q:'Tes fruits & légumes ?' },
+      { type:'recap' },
+    ];
+  }
+  ouvrirAssistant(){ this.asstOuvert = true; this.asstEtape = 0; $('assistant-menu').classList.remove('cache'); this.renderAsst(); }
+  fermerAssistant(){ this.asstOuvert = false; $('assistant-menu').classList.add('cache'); }
+  asstChoisirObjectif(type){ this.choisirObjectif(type); this.asstAvancer(); }   /* choix → étape suivante */
+  asstSetFacile(v){ this.etat.preferencesAlim.faciliteSeulement = !!v; this.store.sauver(); this.asstAvancer(); }
+  asstAvancer(){ const n = this.asstSteps().length; this.asstEtape = Math.min(this.asstEtape + 1, n - 1); this.renderAsst(); }
+  asstRetour(){ this.asstEtape = Math.max(this.asstEtape - 1, 0); this.renderAsst(); }
+  asstSuivant(){
+    const steps = this.asstSteps();
+    if(steps[this.asstEtape].type === 'recap'){ this.fermerAssistant(); this.genererMenuAuto(); return; }
+    this.asstAvancer();
+  }
+
+  renderAsst(){
+    if(!this.asstOuvert) return;
+    const steps = this.asstSteps();
+    const i = Math.min(this.asstEtape, steps.length - 1);
+    const step = steps[i];
+    $('asst-titre').textContent = `Mon menu · étape ${i + 1}/${steps.length}`;
+    $('asst-prog-barre').style.width = `${Math.round((i + 1) / steps.length * 100)}%`;
+    $('asst-retour').disabled = i === 0;
+    const suivant = $('asst-suivant');
+    suivant.textContent = step.type === 'recap' ? 'Générer mon menu' : 'Suivant ▶';
+
+    const corps = $('asst-corps');
+    if(step.type === 'objectif'){
+      const actif = this.objectifCourant();
+      const opt = (v, lib, sub) => `<button type="button" class="asst-choix${v === actif ? ' actif' : ''}" data-asst-obj="${v}"><b>${lib}</b><span>${sub}</span></button>`;
+      corps.innerHTML = `<h3 class="asst-q">Quel est ton objectif ?</h3>
+        <div class="asst-choix-liste">
+          ${opt('seche', 'Sèche', 'perdre du gras')}
+          ${opt('recompo', 'Recomposition', 'maintien, gagner du muscle')}
+          ${opt('masse', 'Prise de masse', 'prendre du poids')}
+        </div>`;
+    } else if(step.type === 'facile'){
+      const f = !!this.etat.preferencesAlim.faciliteSeulement;
+      const opt = (v, lib, sub) => `<button type="button" class="asst-choix${(v === 1) === f ? ' actif' : ''}" data-asst-facile="${v}"><b>${lib}</b><span>${sub}</span></button>`;
+      corps.innerHTML = `<h3 class="asst-q">Tu veux cuisiner ?</h3>
+        <div class="asst-choix-liste">
+          ${opt(1, 'Non, le plus simple', 'zéro prépa · cuiseur à riz · airfryer')}
+          ${opt(0, 'Oui, peu importe', 'tous les aliments du pool')}
+        </div>`;
+    } else if(step.type === 'role'){
+      corps.innerHTML = `<h3 class="asst-q">${echap(step.q)}</h3>
+        <p class="note" style="margin:0 0 10px">1 tap = <span class="gen-leg aime">j'aime</span>, 2 taps = <span class="gen-leg evite">à éviter</span>, 3 taps = neutre. Tu peux ne rien cocher.</p>
+        <div class="gen-chips">${this.chipsRole(step.role)}</div>`;
+    } else {   /* recap */
+      const c = this.cibleGen();
+      const p = this.etat.preferencesAlim;
+      let cibleTxt;
+      if(c.valide){ const t = c.cibles; cibleTxt = `<div class="asst-cible mono">${t.kcal} kcal · P ${t.prot} / G ${t.gluc} / L ${t.lip} g · fibres ${t.fib} g</div>`; }
+      else { const lib = { sexe:'sexe', age:'âge', stature:'taille', poids:'une pesée' }; cibleTxt = `<p class="note" style="color:var(--alerte)">Complète d'abord ${c.manque.map(m => lib[m] || m).join(', ')} dans le calculateur de besoins.</p>`; }
+      corps.innerHTML = `<h3 class="asst-q">C'est prêt !</h3>
+        <p class="note" style="margin:0 0 6px">Objectif <b>${echap(this.OBJ_LIB[this.objectifCourant()])}</b> · ${p.faciliteSeulement ? 'plats faciles' : 'tous aliments'} · ${p.aimes.length} aimé(s), ${p.evites.length} évité(s).</p>
+        ${cibleTxt}
+        <p class="note">« Générer mon menu » crée un nouveau menu « <b>${echap(this.OBJ_LIB[this.objectifCourant()])} auto</b> » et l'active.</p>
+        <button type="button" class="btn btn-2" data-asst-ajuster style="margin-top:4px">Plutôt ajuster mon menu actuel</button>`;
+      suivant.disabled = !c.valide;
+      return;
+    }
+    suivant.disabled = false;
+  }
+
+  /* chips d'un rôle (réutilisé carte + assistant), marqués aimé / évité */
+  chipsRole(role){
+    const p = this.etat.preferencesAlim;
+    return POOL_GENERATEUR.filter(e => e.role === role && ALIMENTS[e.cle]).map(e => {
+      const etat = p.aimes.includes(e.cle) ? ' aime' : p.evites.includes(e.cle) ? ' evite' : '';
+      return `<button type="button" class="gen-chip${etat}" data-gen-cle="${echap(e.cle)}">${echap(ALIMENTS[e.cle].nom)}</button>`;
+    }).join('');
+  }
+
   renderGen(){
     if(!this.genOuvert) return;
     const c = this.cibleGen();
@@ -804,15 +902,9 @@ export class RepasModule {
   /* chips d'aliments du pool, groupés par rôle, marqués aimé / évité */
   renderGenPrefs(){
     const box = $('gen-prefs'); if(!box) return;
-    const p = this.etat.preferencesAlim;
     const roles = [['prot','Protéines'], ['gluc','Glucides'], ['lip','Lipides'], ['fibre','Fruits & légumes']];
-    box.innerHTML = roles.map(([role, lib]) => {
-      const chips = POOL_GENERATEUR.filter(e => e.role === role && ALIMENTS[e.cle]).map(e => {
-        const etat = p.aimes.includes(e.cle) ? ' aime' : p.evites.includes(e.cle) ? ' evite' : '';
-        return `<button type="button" class="gen-chip${etat}" data-gen-cle="${echap(e.cle)}">${echap(ALIMENTS[e.cle].nom)}</button>`;
-      }).join('');
-      return `<div class="gen-role"><div class="gen-role-lib">${lib}</div><div class="gen-chips">${chips}</div></div>`;
-    }).join('');
+    box.innerHTML = roles.map(([role, lib]) =>
+      `<div class="gen-role"><div class="gen-role-lib">${lib}</div><div class="gen-chips">${this.chipsRole(role)}</div></div>`).join('');
   }
 
   /* aperçu du dernier menu généré : macros atteintes vs cible + avertissements */
