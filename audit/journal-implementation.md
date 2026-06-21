@@ -251,3 +251,20 @@ Synchro et `fusion.js` non touchés.
 **Phase 4 (V4 F0→F3) entièrement livrée.** Le pilotage de charge, la récupération/readiness,
 les recommandations (deload, volume, reco contextualisée, projection) et l'analyse (cycles,
 corrélations) sont en place, tous en moteurs purs testés et en dégradé gracieux.
+
+---
+
+## Nutri — Pool du générateur étendu (branche `nutri-pool-etendu`) ✅ FAIT
+- [x] `js/data/generateur-pool.js` : **28 → 81 aliments** « faciles » (zéro prépa / cuiseur à
+  riz / airfryer), tous puisés dans la base curée existante (aucun nouvel aliment, aucune
+  macro à maintenir — lues dans ALIMENTS via la clé). Répartition enrichie sur les 4 rôles :
+  28 protéines (viandes/poissons faciles, laitages riches, végé), 18 glucides (féculents au
+  cuiseur, petit-déj, sucres rapides), 13 lipides (oléagineux & graines), 22 fibres (légumes
+  airfryer/crus + fruits). Bénéfice direct : assistant guidé et chips `aime/évite` bien plus
+  variés, et meilleure couverture des cibles/goûts par le solveur.
+- [x] **Garde-fou** `tests/generateur-pool.test.js` (+7) : chaque entrée référence un aliment
+  existant, rôle/prep valides, bornes cohérentes (0 ≤ min ≤ base ≤ max, pas > 0), pas de
+  doublon, tag `unite` correct. Cible « irréaliste » du test générateur relevée (~12 000 kcal,
+  la capacité du pool ayant augmenté).
+- [x] **334 → 341 tests verts.** `sw.js` v35 → v36. Vérif navigateur (CDP, cache désactivé) :
+  chips du générateur = 81 (28/18/13/22 par rôle), zéro erreur console.
