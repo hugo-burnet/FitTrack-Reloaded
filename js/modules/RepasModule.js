@@ -2,7 +2,7 @@ import { $, echap, cloneProfond, aujourdHui, slug } from '../utils.js';
 import { ALIMENTS, PLAN } from '../data.js';
 import { ORDRE_CATEGORIES } from '../data/aliments-base.js';
 import { catalogue, rechercher, categoriesPresentes } from '../catalogue.js';
-import { kcalItem, protItem, glucItem, lipItem, fibItem, flexSature, macrosCible, macrosPlat } from '../nutrition.js';
+import { kcalItem, protItem, glucItem, lipItem, fibItem, flexSature, menuSature, macrosCible, macrosPlat } from '../nutrition.js';
 import { moyennesHebdo } from '../stats.js';
 import { calculerBesoins, frequenceHebdo, OBJECTIFS } from '../besoins.js';
 import { genererMenu, ajusterMenu } from '../generateur.js';
@@ -110,6 +110,11 @@ export class RepasModule {
   planActif(){ return repasActifs(this.etat); }
   /* plan effectif : surcharge du jour si elle existe, sinon les repas du menu actif */
   plan(){ return this.etat.repas.planJour || this.planActif(); }
+  /* le menu actif a-t-il été généré/ajusté ? → le stepper rééchelonne TOUT le menu (échelle
+     globale) au lieu du seul flex riz/avoine. Catalogue fusionné car un menu généré peut
+     contenir des aliments perso (cf. ajusterMenu). */
+  estGenere(){ const m = this.menuActif(); return !!(m && m.genere); }
+  alimentsMenu(){ return this.estGenere() ? this.cat() : ALIMENTS; }
 
   bind(){
     /* picker hors-plan : filtre catégories + liste d'aliments (base + perso), peuplés dynamiquement */
@@ -219,13 +224,14 @@ export class RepasModule {
 
   /* ---- calculs nutritionnels (moteur pur dans repas-logique.js / nutrition.js) ----
      Le facteur flex se calcule sur le menu actif (planActif), pas sur la surcharge du jour. */
-  qteAjustee(cle, qBase){ return qteAjusteePure(cle, qBase, this.etat.objectifKcal, this.planActif()); }
-  macrosRepas(r){ return macrosRepasPure(r, this.etat.objectifKcal, this.planActif()); }
+  qteAjustee(cle, qBase){ return qteAjusteePure(cle, qBase, this.etat.objectifKcal, this.planActif(), this.alimentsMenu(), this.estGenere()); }
+  macrosRepas(r){ return macrosRepasPure(r, this.etat.objectifKcal, this.planActif(), this.alimentsMenu(), this.estGenere()); }
   repasKcal(r){ return this.macrosRepas(r).kcal; }
 
-  /* cible du jour : kcal = objectif réglé ; macros = ce que le plan délivre (flex ajusté) */
+  /* cible du jour : kcal = objectif réglé ; macros = ce que le plan délivre (flex ajusté pour
+     un plan fixe, échelle globale pour un menu généré). */
   cibles(){
-    const m = macrosCible(this.etat.objectifKcal, this.planActif());
+    const m = macrosCible(this.etat.objectifKcal, this.planActif(), this.alimentsMenu(), this.estGenere());
     return { kcal:this.etat.objectifKcal, prot:m.prot, gluc:m.gluc, lip:m.lip, fib:m.fib };
   }
 
@@ -251,7 +257,7 @@ export class RepasModule {
     const jour = this.etat.repas.jour;
     this.etat.journalRepas = this.etat.journalRepas.filter(e=>!(e.date===jour && e.id===id));
     /* flex calculé sur le menu actif (planActif), même si le repas vient de la surcharge du jour */
-    this.etat.journalRepas.push(entreeJournalRepas(r, jour, this.etat.objectifKcal, this.planActif()));
+    this.etat.journalRepas.push(entreeJournalRepas(r, jour, this.etat.objectifKcal, this.planActif(), this.alimentsMenu(), this.estGenere()));
   }
   deJournaliserRepas(id){
     const jour = this.etat.repas.jour;
@@ -765,7 +771,7 @@ export class RepasModule {
     const res = genererMenu(c.cibles, { aimes:p.aimes, evites:p.evites, faciliteSeulement:p.faciliteSeulement, regimes:p.regimes });
     const nom = `${this.OBJ_LIB[this.objectifCourant()]} auto`;
     const id = 'm' + Date.now();
-    this.etat.plansAlim.push({ id, nom, repas: res.repas.map(r => ({ id:r.id, nom:r.nom, items:r.items.map(([cle, q]) => [cle, q]) })) });
+    this.etat.plansAlim.push({ id, nom, genere:true, repas: res.repas.map(r => ({ id:r.id, nom:r.nom, items:r.items.map(([cle, q]) => [cle, q]) })) });
     this.dernierMenuGen = { ...res, _action: 'cree' };
     this.etat.planAlimActif = id;
     this.etat.repas.planJour = null;
@@ -789,6 +795,7 @@ export class RepasModule {
     if(!menu){ toast('Aucun menu actif.', 'erreur'); return; }
     const res = ajusterMenu(menu.repas, c.cibles, this.cat());   /* catalogue fusionné : gère les aliments perso */
     menu.repas = res.repas;
+    menu.genere = true;   /* devient un menu « échelle globale » : le stepper rééchelonne tout */
     this.etat.repas.planJour = null;
     /* même reconnexion : la cible kcal suit le menu ajusté (cohérence cible ↔ quantités) */
     this.etat.objectifKcal = Math.max(1600, Math.min(4000, Math.round(c.cibles.kcal)));
@@ -943,15 +950,28 @@ export class RepasModule {
     if(this.persoOuvert) this.renderPerso();   /* éditeur d'aliments perso (E2) */
     this.renderPlatsActifs();                  /* plats composés (E4) : liste « tap pour journaliser » */
 
-    /* avertissement de saturation du facteur flex (le plan ne peut plus s'ajuster) */
-    const sat = flexSature(this.etat.objectifKcal, this.planActif());
+    /* avertissement de saturation : le plan/menu ne peut plus suivre l'objectif.
+       Menu généré → échelle globale bornée [×0,5 ; ×2] ; plan fixe → flex riz/avoine [×0,4 ; ×1,8]. */
+    const genere = this.estGenere();
+    /* la note sous le stepper décrit le bon comportement selon le type de menu */
+    const note = $('obj-note');
+    if(note) note.innerHTML = genere
+      ? 'Menu généré : le stepper rééchelonne <b>tout le menu</b> au prorata — toutes les portions (et donc protéines, glucides, lipides) suivent ta cible. <b>Quand le verdict te dit ±150 kcal, change ce nombre ici.</b>'
+      : 'Protéines et lipides restent fixés à leurs cibles : seuls le riz et l\'avoine s\'ajustent, comme le dit ton onglet Verdict. <b>Quand le verdict te dit ±150 kcal, change ce nombre ici.</b>';
+    const sat = genere
+      ? menuSature(this.etat.objectifKcal, this.planActif(), this.cat())
+      : flexSature(this.etat.objectifKcal, this.planActif());
     const fw = $('flex-warn');
     if(sat==='bas'){
       fw.classList.remove('cache');
-      fw.innerHTML = '⚠ Objectif très bas : riz/avoine déjà au minimum (×0,4). Le plan ne descend pas plus — le total réel restera <b>au-dessus</b> de la cible.';
+      fw.innerHTML = genere
+        ? '⚠ Objectif très bas pour ce menu : portions déjà au minimum (×0,5). Le total réel restera <b>au-dessus</b> de la cible — régénère un menu plus léger.'
+        : '⚠ Objectif très bas : riz/avoine déjà au minimum (×0,4). Le plan ne descend pas plus — le total réel restera <b>au-dessus</b> de la cible.';
     } else if(sat==='haut'){
       fw.classList.remove('cache');
-      fw.innerHTML = '⚠ Objectif très haut : riz/avoine déjà au maximum (×1,8). Le plan ne monte pas plus — complète avec un ajout hors-plan pour atteindre la cible.';
+      fw.innerHTML = genere
+        ? '⚠ Objectif très haut pour ce menu : portions déjà au maximum (×2). Régénère un menu plus copieux ou complète avec un ajout hors-plan.'
+        : '⚠ Objectif très haut : riz/avoine déjà au maximum (×1,8). Le plan ne monte pas plus — complète avec un ajout hors-plan pour atteindre la cible.';
     } else fw.classList.add('cache');
 
     /* cartes repas : mode normal (tap pour prendre) OU mode réorganisation (déplacer les aliments) */
@@ -1018,8 +1038,10 @@ export class RepasModule {
   /* ---- carte repas normale (tap pour prendre / annuler) ---- */
   htmlCarteNormale(r){
     const pris = !!this.etat.repas.coches[r.id];
+    const cat = this.alimentsMenu();
     const items = r.items.map(([cle,qBase])=>{
-      const a=ALIMENTS[cle]; const q=this.qteAjustee(cle,qBase);
+      const a=cat[cle]; if(!a) return '';
+      const q=this.qteAjustee(cle,qBase);
       const lib = a.unite!==undefined ? `${q} ${a.unite}${q>1&&a.unite?'s':''}`.trim() : `${q} g`;
       return `<li><span>${a.nom}</span><span class="qte${a.flex?' flex':''}">${lib}</span></li>`;
     }).join('');
@@ -1055,8 +1077,10 @@ export class RepasModule {
   htmlCarteReorg(r){
     const pris = !!this.etat.repas.coches[r.id];
     const plan = this.plan();
+    const cat = this.alimentsMenu();
     const items = r.items.map(([cle,qBase])=>{
-      const a = ALIMENTS[cle]; const q = this.qteAjustee(cle,qBase);
+      const a = cat[cle]; if(!a) return '';
+      const q = this.qteAjustee(cle,qBase);
       const lib = a.unite!==undefined ? `${q} ${a.unite}${q>1&&a.unite?'s':''}`.trim() : `${q} g`;
       if(pris) return `<div class="ri-bloc"><div class="ri-tete fige"><span class="ri-nom">${echap(a.nom)}</span><span class="ri-qte">${lib}</span></div></div>`;
       const ouvert = this.deplItem === r.id+':'+cle;

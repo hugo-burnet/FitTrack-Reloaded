@@ -41,6 +41,55 @@ test('macrosRepas : agréger tous les repas = macrosCible (cohérence moteur)', 
   proche(Math.round(tot.fib), cible.fib);
 });
 
+/* ================= MENU GÉNÉRÉ : stepper proportionnel (échelle globale) =================
+   genere=true → TOUS les aliments bougent du même facteur, et la cible suit le menu. */
+const MENU_GEN = [
+  { id:'pdej', nom:'Petit-déj', items:[['avoine',80],['whey',1],['banane',1]] },
+  { id:'dej',  nom:'Déjeuner',  items:[['poulet',180],['riz',120],['huile-olive',10]] },
+  { id:'diner',nom:'Dîner',     items:[['oeuf',150],['patate-douce',200]] },
+];
+
+test('qteAjustee (genere) : un aliment NON-flex (poulet) bouge aussi avec l\'objectif', () => {
+  // en flex, le poulet est figé ; en menu généré, il suit le facteur global
+  assert.equal(qteAjustee('poulet', 180, 3500, MENU_GEN), 180);              // flex : figé
+  const bas  = qteAjustee('poulet', 180, 1700, MENU_GEN, ALIMENTS, true);
+  const haut = qteAjustee('poulet', 180, 2800, MENU_GEN, ALIMENTS, true);
+  assert.ok(haut > bas, 'le poulet doit grossir avec l\'objectif en mode généré');
+  assert.equal(haut % 5, 0);                                                 // arrondi 5 g
+});
+test('qteAjustee (genere) : aliment en unités arrondi à l\'unité, jamais sous 1', () => {
+  const q = qteAjustee('whey', 1, 1700, MENU_GEN, ALIMENTS, true);
+  assert.ok(Number.isInteger(q) && q >= 1);
+});
+
+test('macrosRepas (genere) : somme des repas = macrosCible(genere) ET kcal ≈ objectif (stepper)', () => {
+  const proche = (a, b, tol) => assert.ok(Math.abs(a - b) <= tol, `${a} vs ${b} (tol ${tol})`);
+  for(let obj = 1800; obj <= 3200; obj += 100){
+    const tot = MENU_GEN.reduce((s, r) => {
+      const m = macrosRepas(r, obj, MENU_GEN, ALIMENTS, true);
+      return { kcal:s.kcal+m.kcal, prot:s.prot+m.prot, gluc:s.gluc+m.gluc, lip:s.lip+m.lip, fib:s.fib+m.fib };
+    }, { kcal:0, prot:0, gluc:0, lip:0, fib:0 });
+    const cible = macrosCible(obj, MENU_GEN, ALIMENTS, true);
+    // la cible affichée == somme réelle des repas (cohérence cible ↔ quantités)
+    proche(Math.round(tot.prot), cible.prot, 1);
+    proche(Math.round(tot.gluc), cible.gluc, 1);
+    proche(Math.round(tot.lip),  cible.lip,  1);
+    proche(Math.round(tot.fib),  cible.fib,  1);
+    // et le total kcal du menu rééchelonné suit l'objectif (à l'arrondi des portions près)
+    proche(Math.round(tot.kcal), obj, obj*0.08 + 60);
+  }
+});
+
+test('entreeJournalRepas (genere) : journalise les quantités rééchelonnées', () => {
+  const repas = MENU_GEN[1];   // déjeuner
+  const e = entreeJournalRepas(repas, '2026-06-21', 2800, MENU_GEN, ALIMENTS, true);
+  const m = macrosRepas(repas, 2800, MENU_GEN, ALIMENTS, true);
+  assert.equal(e.kcal, Math.round(m.kcal));
+  // poulet (non-flex) rééchelonné > base 180 g pour un objectif au-dessus du menu de base
+  const poulet = e.items.find(i => i.cle === 'poulet');
+  assert.ok(poulet.qte > 180);
+});
+
 /* ---- agrégation du journal ---- */
 const journal = [
   { date:'2026-06-20', id:'dej', kcal:600, prot:50, gluc:60, lip:15, fib:5 },

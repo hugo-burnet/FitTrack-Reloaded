@@ -36,7 +36,7 @@ export function assainirPlansAlim(arr){
   if(!Array.isArray(arr)) return null;
   const menus = arr
     .filter(m => m && typeof m === 'object' && estChaine(m.id))
-    .map(m => ({ ...m, nom: estChaine(m.nom) ? m.nom : 'Menu', repas: assainirRepasPlan(m.repas) || [] }));
+    .map(m => ({ ...m, nom: estChaine(m.nom) ? m.nom : 'Menu', genere: m.genere === true, repas: assainirRepasPlan(m.repas) || [] }));
   return menus.length ? menus : null;
 }
 

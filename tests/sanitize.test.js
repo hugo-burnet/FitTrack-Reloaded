@@ -62,6 +62,17 @@ test('assainirPlansAlim : exige id + nom ; repas nettoyés (aliments connus) ; n
   assert.equal(assainirPlansAlim('nope'), null);
 });
 
+test('assainirPlansAlim : flag genere normalisé en booléen (menu généré/ajusté)', () => {
+  const m = assainirPlansAlim([
+    { id:'g', nom:'Auto', genere:true, repas:[{id:'dej', items:[['riz',100]]}] },
+    { id:'f', nom:'Fixe', repas:[{id:'dej', items:[['riz',100]]}] },          /* absent → false */
+    { id:'j', nom:'Junk', genere:'oui', repas:[{id:'dej', items:[['riz',100]]}] }, /* non-booléen → false */
+  ]);
+  assert.equal(m[0].genere, true);
+  assert.equal(m[1].genere, false);
+  assert.equal(m[2].genere, false);
+});
+
 test('assainirProgrammes : exige id + jours[] dont chaque jour a un tableau exercices', () => {
   const p = assainirProgrammes([
     {id:'a', jours:[{id:'j', exercices:[]}]},
