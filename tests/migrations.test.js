@@ -86,10 +86,31 @@ test('migration v4 → v5 : ajoute la collection plats[] vide', () => {
   assert.deepEqual(e.plats, []);
 });
 
-test('migration v1 (legacy) → schéma courant : profil + perso + plansAlim + plats en une chaîne', () => {
+test('migration v4 → v5 : ne dé-référence pas un plats[] déjà présent', () => {
+  const plats = [{ id:'p1', nom:'Bowl', composants:[['riz',100]] }];
+  const e = { schema:4, plats };
+  migrer(e);
+  assert.equal(e.plats, plats);   /* même référence : pas écrasé */
+});
+
+test('migration v5 → v6 : ajoute la collection etatsJour[] vide', () => {
+  const e = { schema:5, plats:[] };
+  migrer(e);
+  assert.equal(e.schema, SCHEMA_ACTUEL);
+  assert.deepEqual(e.etatsJour, []);
+});
+
+test('migration v5 → v6 : ne dé-référence pas un etatsJour[] déjà présent', () => {
+  const etatsJour = [{ date:'2026-06-20', sommeil:7.5, courbatures:3 }];
+  const e = { schema:5, etatsJour };
+  migrer(e);
+  assert.equal(e.etatsJour, etatsJour);   /* même référence : pas écrasé */
+});
+
+test('migration v1 (legacy) → schéma courant : profil + perso + plansAlim + plats + etatsJour en une chaîne', () => {
   const e = { poids:[], plan:[{id:'dej', items:[['riz',100]]}] };
   migrer(e);
   assert.equal(e.schema, SCHEMA_ACTUEL);
-  assert.ok(e.profil && e.aliments && Array.isArray(e.plansAlim) && Array.isArray(e.plats));
+  assert.ok(e.profil && e.aliments && Array.isArray(e.plansAlim) && Array.isArray(e.plats) && Array.isArray(e.etatsJour));
   assert.equal(e.planAlimActif, 'principal');
 });

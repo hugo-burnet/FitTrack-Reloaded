@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   assainirEtat, assainirDates, serieValide, assainirSeance,
   assainirRepasPlan, assainirPlansAlim, assainirProgrammes, assainirJournalRepas, assainirCoursesItems,
-  assainirAlimentsPerso, assainirPlats,
+  assainirAlimentsPerso, assainirPlats, assainirEtatsJour,
 } from '../js/sanitize.js';
 
 /* Garde-fou sur le code défensif le plus critique (jusqu'ici non testé) :
@@ -111,6 +111,33 @@ test('assainirAlimentsPerso : exige un nom, normalise macros et défaut de caté
   assert.equal(out.negatif.gluc100, 0);
   assert.deepEqual(assainirAlimentsPerso('nope'), {});
   assert.deepEqual(assainirAlimentsPerso(null), {});
+});
+
+test('assainirSeance : effort de séance (duree/rpe) borné, invalides supprimés', () => {
+  const base = { date:'2026-01-01', exercices:[{nom:'Squat', series:[{charge:60,reps:5}]}] };
+  const ok = assainirSeance({ ...base, duree:55, rpe:8 });
+  assert.equal(ok.duree, 55);
+  assert.equal(ok.rpe, 8);
+  const ko = assainirSeance({ ...base, duree:-3, rpe:42 });
+  assert.ok(!('duree' in ko), 'durée ≤ 0 supprimée');
+  assert.ok(!('rpe' in ko), 'rpe hors [0,10] supprimé');
+  const nan = assainirSeance({ ...base, duree:'x', rpe:NaN });
+  assert.ok(!('duree' in nan) && !('rpe' in nan));   /* jamais NaN */
+});
+
+test('assainirEtatsJour : date obligatoire, sommeil/courbatures ≥ 0 sinon null, courbatures ≤ 10', () => {
+  const out = assainirEtatsJour([
+    { date:'2026-06-20', sommeil:7.5, courbatures:4 },
+    { date:'2026-06-21', sommeil:-1, courbatures:99 },   /* sommeil <0 → null ; courbatures bornées à 10 */
+    { date:'2026-06-22' },                               /* champs absents → null */
+    { sommeil:8 },                                       /* pas de date → écarté */
+    null,
+  ]);
+  assert.equal(out.length, 3);
+  assert.deepEqual(out[0], { date:'2026-06-20', sommeil:7.5, courbatures:4 });
+  assert.deepEqual(out[1], { date:'2026-06-21', sommeil:null, courbatures:10 });
+  assert.deepEqual(out[2], { date:'2026-06-22', sommeil:null, courbatures:null });
+  assert.deepEqual(assainirEtatsJour('nope'), []);
 });
 
 test('assainirEtat : ne lève jamais et purge en place', () => {
