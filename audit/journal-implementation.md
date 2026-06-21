@@ -83,7 +83,10 @@ ex. recompo 72,5 kg, cible 145 g mais menu ≈ 197 g) et les kcal saturent hors 
 - [x] **UI** (onglet Repas, sous le calculateur) : carte « Générer un menu » — cible affichée,
   goûts en chips par rôle (1 tap j'aime / 2 à éviter / 3 neutre), bascule « faciles uniquement »,
   bouton → crée un **nouveau menu « <Objectif> auto »** et l'active, aperçu macros atteintes vs cible.
-- **228 → 239 tests verts.** `sw.js` v29 (+ generateur.js, generateur-pool.js précachés).
+- [x] **Sync des goûts** : `fusion.js` étendu (union des aimés/évités entre appareils, l'évité
+  gagne, faciliteSeulement à l'entrant ; validé le 2026-06-21). Les menus générés se propagent
+  déjà via `plansAlim`. **+1 test** (`fusion.test.js`).
+- **228 → 240 tests verts.** `sw.js` v30 (+ generateur.js, generateur-pool.js précachés).
 - Vérif navigateur (CDP, cache désactivé) : profil → cible, « j'aime poulet » pris en compte,
   Générer → menu créé/activé, macros à ±2 g de la cible, zéro erreur console.
 - ⏳ Pistes : étendre le pool, Q&A guidée (allergies/régimes), corriger aussi les menus

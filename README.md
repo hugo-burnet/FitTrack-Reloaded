@@ -81,7 +81,7 @@ Sur **GitHub Pages**, aucune manipulation : les modules ES sont servis en HTTP, 
 
 ## Tests
 
-Les moteurs purs sont couverts par des tests unitaires (**239 tests**), via le **runner natif de Node** — aucune dépendance à installer :
+Les moteurs purs sont couverts par des tests unitaires (**240 tests**), via le **runner natif de Node** — aucune dépendance à installer :
 
 ```bash
 npm test          # ou : node --test
