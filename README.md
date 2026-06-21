@@ -31,6 +31,7 @@ Plan alimentaire du jour avec **objectif kcal ajustable**. Protéines/lipides fi
 - **Base d'aliments curée** (~170 aliments en 13 catégories : féculents, légumineuses, viandes, poissons, laitages, fruits, légumes, oléagineux, sucré, boissons, plats, compléments…) + **éditeur d'aliments perso**. Le sélecteur hors-plan a **recherche** (insensible aux accents) et **filtre par catégorie**.
 - **Multi-menus** : crée plusieurs menus (Sèche, Masse, Maintien…), bascule de l'un à l'autre, duplique / renomme / supprime. La cible, l'écart **et les courses suivent le menu actif**.
 - **Plats composés** : enregistre une recette (liste d'aliments + quantités) ; ses macros sont **dérivées des composants** et tu la journalises **d'un tap**.
+- **Générateur de menu adapté** : à partir de ta cible (kcal **et** protéines/glucides/lipides/fibres issues du calculateur) et de tes **goûts** (aliments aimés / à éviter, option « plats faciles uniquement » : zéro prépa, cuiseur à riz, airfryer), l'app **génère un menu mangeable qui tombe juste sur les macros** — pas seulement les kcal. Il est créé comme **nouveau menu** (ton menu actuel est conservé), éditable ensuite. Corrige le travers du plan fixe, qui sur-livrait les protéines (seuls les glucides s'ajustaient).
 - **Comblement protéique** : si un déficit de protéines subsiste, l'app suggère des options chiffrées (whey / skyr / poulet) à ajouter d'un tap.
 
 ### 🏋️ Muscu
@@ -80,7 +81,7 @@ Sur **GitHub Pages**, aucune manipulation : les modules ES sont servis en HTTP, 
 
 ## Tests
 
-Les moteurs purs sont couverts par des tests unitaires (**228 tests**), via le **runner natif de Node** — aucune dépendance à installer :
+Les moteurs purs sont couverts par des tests unitaires (**239 tests**), via le **runner natif de Node** — aucune dépendance à installer :
 
 ```bash
 npm test          # ou : node --test
@@ -93,12 +94,13 @@ Cibles :
 - `catalogue.js` / `aliments-base.js` — base curée cohérente (Atwater), fusion base+perso, recherche/filtre.
 - `plans.js` — menu actif & repas actifs (multi-menus).
 - `besoins.js` — BMR / TDEE / split macros (calculateur).
+- `generateur.js` / `generateur-pool.js` — génération d'un menu visant les 3 macros, selon goûts & facilité.
 - `verdict.js` — l'arbre de décision pour chaque objectif (sèche/recompo/masse) + anti-réactivité.
 - `charge.js` — charge aiguë/chronique, ACWR & zones, monotonie/strain, série.
 - `scores.js` — Compliance, Risk, alertes surcharge / sous-charge / stagnation.
 - `readiness.js` — sRPE (Foster), fitness-fatigue (Banister), scores Readiness / Recovery / Progression.
 - `bilan.js` — `adherenceHebdo`, `bilanForce`. · `xp.js` — XP, niveaux, gating de progression.
-- `migrations.js` / `sanitize.js` / `defaults.js` / `fusion.js` — schéma 1→6, assainissement, fusion par date/id/clé.
+- `migrations.js` / `sanitize.js` / `defaults.js` / `fusion.js` — schéma 1→7, assainissement, fusion par date/id/clé.
 - `RepasModule` — moteur de comblement protéique.
 
 ---
@@ -138,6 +140,7 @@ js/
   catalogue.js        fusion base + aliments perso, recherche / filtre
   plans.js            multi-menus (menu actif & repas actifs)
   besoins.js          calculateur BMR → TDEE → cible kcal/macros (E5)
+  generateur.js       génération de menu adapté (cibles macros + goûts)
   verdict.js          arbre de décision multi-objectif (sèche/recompo/masse)
   charge.js           pilotage de charge (aiguë/chronique, ACWR, monotonie/strain)
   scores.js           scores composites (Risque, Assiduité) + alertes

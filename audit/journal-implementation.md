@@ -66,6 +66,31 @@ Découpée en sous-lots livrables indépendamment, chacun testé et committé. O
 
 ---
 
+## Nutri F1 — Générateur de menus adaptés — branche `nutri-generateur-menus`
+**Problème** : le plan historique fixe les portions ; seuls les glucides « flexent » vers la
+cible kcal → les **protéines/lipides ne suivent jamais l'objectif** (sur-livraison de protéines :
+ex. recompo 72,5 kg, cible 145 g mais menu ≈ 197 g) et les kcal saturent hors ~2020-3240 kcal.
+**Solution** : un générateur qui résout les 3 macros à la fois, piloté par les goûts.
+- [x] **Moteur pur** `js/generateur.js` + pool curé `js/data/generateur-pool.js` (aliments
+  faciles : zéro prépa / cuiseur à riz / airfryer, tagués rôle+prépa+repas+bornes). `genererMenu`
+  par descente de coordonnées (met chaque rôle à l'échelle pour combler l'écart de SA macro ;
+  comme kcal = 4·P + 4·G + 9·L, viser P/G/L vise les kcal). `evites` = filtre dur, `aimes` =
+  préférence (complétée si capacité insuffisante), `faciliteSeulement`. Dégradé gracieux
+  (saturations signalées, jamais d'échec/NaN). **+8 tests** (`generateur.test.js`).
+- [x] **État** (migration **schéma 6→7**) : `etat.preferencesAlim = {aimes[], evites[], faciliteSeulement}`
+  (defaults + Store + `assainirPreferencesAlim`). `appliquerBesoins` stockait déjà `objectif.cibleMacros`.
+  **+3 tests**.
+- [x] **UI** (onglet Repas, sous le calculateur) : carte « Générer un menu » — cible affichée,
+  goûts en chips par rôle (1 tap j'aime / 2 à éviter / 3 neutre), bascule « faciles uniquement »,
+  bouton → crée un **nouveau menu « <Objectif> auto »** et l'active, aperçu macros atteintes vs cible.
+- **228 → 239 tests verts.** `sw.js` v29 (+ generateur.js, generateur-pool.js précachés).
+- Vérif navigateur (CDP, cache désactivé) : profil → cible, « j'aime poulet » pris en compte,
+  Générer → menu créé/activé, macros à ±2 g de la cible, zéro erreur console.
+- ⏳ Pistes : étendre le pool, Q&A guidée (allergies/régimes), corriger aussi les menus
+  existants (au lieu de seulement générer).
+
+---
+
 ## V4 — Intelligence & Analyse (Phase 4) — branche `v4-analyse`
 Cf. `phase-4-surcharge-progressive.md`. Livré par lots (F0 d'abord, le plus fort rendement).
 
